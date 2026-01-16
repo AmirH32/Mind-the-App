@@ -17,6 +17,7 @@ class APKResult:
         source (str): The source website (e.g., "apkmirror", "apkpure", "google").
         description (Optional[str]): Short description of the APK.
         version (Optional[str]): APK version string.
+        developer (Optional[str]): Developer or publisher of the APK.
         direct_download_url (Optional[str]): Direct link to download the APK, if available.
     """
 
@@ -25,6 +26,7 @@ class APKResult:
     source: str  # e.g., "apkmirror", "apkpure", "google"
     description: Optional[str] = None
     version: Optional[str] = None
+    developer: Optional[str] = None
     direct_download_url: Optional[str] = None
 
     def to_dict(self) -> Dict:
@@ -35,6 +37,7 @@ class APKResult:
             "source": self.source,
             "description": self.description,
             "version": self.version,
+            "developer": self.developer,
             "direct_download_url": self.direct_download_url,
         }
 
@@ -76,14 +79,16 @@ class BaseAPKScraper(ABC):
         self.session = None
 
     @abstractmethod
-    def search(self, query: str) -> List[APKResult]:
+    def search(self, query: str, captured_results: set) -> tuple[List[APKResult], set]:
         """Search for APKs matching a query.
 
         Args:
             query (str): The search term.
+            captured_results (set): Set of already captured result titles to avoid duplicates.
 
         Returns:
-            List[APKResult]: List of APK search results.
+            List[APKResult]: List of APK search results.\
+            set: Set of already captured result titles.
 
         Raises:
             NotImplementedError: Must be implemented in subclasses.
@@ -99,6 +104,25 @@ class BaseAPKScraper(ABC):
 
         Returns:
             Optional[str]: Direct download URL if available, otherwise None.
+
+        Raises:
+            NotImplementedError: Must be implemented in subclasses.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def search_and_download(
+        self, query: str, captured_results: set
+    ) -> tuple[List[APKResult], set]:
+        """Search for APKs and retrieve their download links.
+
+        Args:
+            query (str): The search term.
+            captured_results (set): Set of already captured result titles to avoid duplicates.
+
+        Returns:
+            List[APKResult]: List of APK search results with download links.
+            set: Set of already captured result titles
 
         Raises:
             NotImplementedError: Must be implemented in subclasses.
