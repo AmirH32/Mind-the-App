@@ -79,12 +79,11 @@ class BaseAPKScraper(ABC):
         self.session = None
 
     @abstractmethod
-    def search(self, query: str, captured_results: set) -> tuple[List[APKResult], set]:
+    def search(self, query: str) -> Optional[APKResult]:
         """Search for APKs matching a query.
 
         Args:
             query (str): The search term.
-            captured_results (set): Set of already captured result titles to avoid duplicates.
 
         Returns:
             List[APKResult]: List of APK search results.\
@@ -113,7 +112,7 @@ class BaseAPKScraper(ABC):
     @abstractmethod
     def search_and_download(
         self, query: str, captured_results: set
-    ) -> tuple[List[APKResult], set]:
+    ) -> tuple[Optional[APKResult], set]:
         """Search for APKs and retrieve their download links.
 
         Args:

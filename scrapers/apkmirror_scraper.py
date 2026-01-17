@@ -24,6 +24,8 @@ class APKMirrorScraper(BaseAPKScraper):
         user_agent (Optional[str]): Custom User-Agent string for HTTP requests.
         max_results (int): Maximum number of search results to return.
         rate_limit_delay (float): Delay between requests to avoid rate limiting.
+        cached_search (str): Cached HTML content of the last search results page.
+        apk_counter (int): Counter to track the number the current app row, if apk download link is not found.
     """
 
     def __init__(
@@ -41,8 +43,10 @@ class APKMirrorScraper(BaseAPKScraper):
         self.scraper = cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "windows", "mobile": False}
         )
+        self.cached_search = ""
+        self.apk_counter = 0
 
-    def search(self, query: str, captured_results: set) -> tuple[List[APKResult], set]:
+    def search(self, query: str) -> Optional[APKResult]:
         """
         Search APKMirror for APKs.
 
@@ -57,20 +61,23 @@ class APKMirrorScraper(BaseAPKScraper):
 
         # Apply rate limiting
         self._rate_limit()
+        print(f"Query: {query}")
 
         search_url = self.search_url + quote_plus(query)
 
         try:
-            response = self.scraper.get(
-                search_url, headers=self.headers, timeout=self.timeout
-            )
-            response.raise_for_status()
+            if self.apk_counter == 0:
+                response = self.scraper.get(
+                    search_url, headers=self.headers, timeout=self.timeout
+                )
+                response.raise_for_status()
+                self.cached_search = response.text
 
-            return self._parse_search_results(response.text, captured_results)
+            return self._parse_search_results(self.cached_search)
 
         except Exception as e:
             logger.error(f"Error searching APKMirror: {e}")
-            return [], set()
+            return None
 
     def _extract_base_name(self, title: str) -> str:
         """
@@ -86,9 +93,7 @@ class APKMirrorScraper(BaseAPKScraper):
             parts = parts[:-1]
         return " ".join(parts)
 
-    def _parse_search_results(
-        self, html: str, captured_results: set
-    ) -> tuple[List[APKResult], set]:
+    def _parse_search_results(self, html: str) -> Optional[APKResult]:
         """Parses the HTML content of the search results page.
 
         Args:
@@ -98,26 +103,22 @@ class APKMirrorScraper(BaseAPKScraper):
             List[APKResult]: List of APKResult objects parsed from the page.
         """
         soup = BeautifulSoup(html, "html.parser")
-        results = []
         # Find all app rows
         app_rows = soup.find_all("div", {"class": "appRow"})
 
-        for app_row in app_rows[: self.max_results]:
-            try:
-                result = self._parse_app_row(app_row)
-                # Avoids duplicates based on base app name
-                if result is not None:
-                    base_name = self._extract_base_name(result.title).lower()
-                    if base_name not in captured_results:
-                        results.append(result)
-                        captured_results.add(
-                            self._extract_base_name(result.title).lower()
-                        )
-            except Exception as e:
-                logger.debug(f"Error parsing app row: {e}")
-                continue
+        if self.apk_counter >= len(app_rows):
+            print("No more app rows to process.")
+            return None
+        app_row = app_rows[self.apk_counter]
+        try:
+            result = self._parse_app_row(app_row)
+            # Avoids duplicates based on base app name
+            if result is not None:
+                return result
+        except Exception as e:
+            logger.debug(f"Error parsing app row: {e}")
 
-        return results, captured_results
+        return None
 
     def _parse_app_row(self, app_row) -> Optional[APKResult]:
         """Parses a single app row element to extract app details.
@@ -190,13 +191,12 @@ class APKMirrorScraper(BaseAPKScraper):
             soup = BeautifulSoup(response.text, "html.parser")
 
             # Find the span child of the variant for the download link
-            apk_spans = soup.find_all("svg", class_=["icon", "tag-icon"])
+            apk_spans = soup.select("svg.icon.tag-icon")
 
             apk_links = []
             for span in apk_spans:
-                row = span.parent
-                a = row.find("a", class_="accent_color", href=True)
-                if a:
+                a = span.parent
+                if a.name == "a" and "accent_color" in a.get("class", []):
                     apk_links.append(a)
 
             if not apk_links:
@@ -220,13 +220,14 @@ class APKMirrorScraper(BaseAPKScraper):
             download_button = variant_soup.find("a", {"class": "downloadButton"})
             if not download_button:
                 logger.warning("Download button not found")
-                print(apk_url)
                 return None
 
             download_page_url = urljoin(self.base_url, download_button.get("href", ""))
 
             # Step 4: Go to download page to get final link
             self._rate_limit()
+            download_headers = self.headers.copy()
+            download_headers["Referer"] = apk_url
             download_response = self.scraper.get(
                 download_page_url, headers=self.headers, timeout=self.timeout
             )
@@ -259,22 +260,52 @@ class APKMirrorScraper(BaseAPKScraper):
 
     def search_and_download(
         self, query: str, captured_results: set
-    ) -> tuple[List[APKResult], set]:
+    ) -> tuple[Optional[APKResult], set]:
         """
-        Search and get download links in one call.
+        Search for an APK and get its download link in one call.
 
         Args:
             query: Search query
+            captured_results: Set of already captured results to avoid duplicates
 
         Returns:
-            List of dicts with search results and download links
+            Tuple containing:
+                - APKResult with download link, or None if not found
+                - Updated captured_results set
         """
-        results, captured_results = self.search(query, captured_results)
+        result: Optional[APKResult] = None
 
-        enhanced_results = []
-        for result in results:
+        while True:
+            if self.apk_counter >= self.max_results:
+                print("Reached maximum number of attempts, stopping search.")
+                self.apk_counter = 0
+                return None, captured_results
+
+            result = self.search(query)
+
+            # Stop if search returned nothing
+            if result is None:
+                print("No result found.")
+                self.apk_counter = 0
+                return None, captured_results
+
+            base_name = self._extract_base_name(result.title).lower()
+            if base_name in captured_results:
+                self.apk_counter += 1
+                print("Duplicate found, skipping...")
+                continue
+
+            # Try to get download link
             download_link = self.get_download_link(result)
-            result.direct_download_url = download_link
-            enhanced_results.append(result)
+            if download_link is None:
+                self.apk_counter += 1
+                continue
 
-        return enhanced_results, captured_results
+            # Attach download link and break loop
+            result.direct_download_url = download_link
+            captured_results.add(self._extract_base_name(result.title).lower())
+
+            break
+
+        self.apk_counter = 0
+        return result, captured_results

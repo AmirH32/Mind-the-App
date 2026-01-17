@@ -10,12 +10,37 @@ from query_snowballer.snowballer import QuerySnowballer
 from query_provider.google_provider import GoogleQueryFinder
 from apk_finder.google_cse_client import GoogleAPKSearcher
 from scrapers.apkmirror_scraper import APKMirrorScraper
-from utils.config import GOOGLE_API_KEY, GOOGLE_SEARCH_ENGINE_ID
+from downloaders.downloader import Downloader
+from utils.config import (
+    GOOGLE_API_KEY,
+    GOOGLE_SEARCH_ENGINE_ID,
+    EXPANDED_QUERIES_FILE,
+    SEARCH_RESULTS_FILE,
+    DOWNLOAD_DIRECTORY,
+    DIRECT_DOWNLOADS_FILE,
+)
 
 load_dotenv()
 
-EXPANDED_QUERIES_FILE = "/home/malan/Documents/files/expanded_queries.json"
-SEARCH_RESULTS_FILE = "/home/malan/Documents/files/search_results.json"
+
+def check_constants():
+    """Check if essential constants are set."""
+    missing = []
+    if not isinstance(GOOGLE_API_KEY, str):
+        missing.append("GOOGLE_API_KEY")
+    if not isinstance(GOOGLE_SEARCH_ENGINE_ID, str):
+        missing.append("GOOGLE_SEARCH_ENGINE_ID")
+    if not isinstance(DOWNLOAD_DIRECTORY, str):
+        missing.append("DOWNLOAD_DIRECTORY")
+    if not isinstance(EXPANDED_QUERIES_FILE, str):
+        missing.append("EXPANDED_QUERIES_FILE")
+    if not isinstance(SEARCH_RESULTS_FILE, str):
+        missing.append("SEARCH_RESULTS_FILE")
+    if not isinstance(DIRECT_DOWNLOADS_FILE, str):
+        missing.append("DIRECT_DOWNLOADS_FILE")
+    if missing:
+        print(f"Error: Missing configuration for {', '.join(missing)} in config.py")
+        exit(1)
 
 
 def find_and_save_queries():
@@ -54,7 +79,7 @@ def search_and_save_apks(queries, max_queries=10):
     all_results = []
 
     for query in tqdm(queries[:max_queries], desc="Searching APKs"):
-        time.sleep(0.2)
+        time.sleep(3)
         results = apk_searcher.search_apks(query, 5)
         all_results.extend(results)
 
@@ -93,7 +118,65 @@ def load_json(file_path):
         return json.load(f)
 
 
+def save_apk_downloads_to_file(apk_downloads, file_path):
+    """Save APK download information to JSON file."""
+    apk_data = []
+    for apk in apk_downloads:
+        apk_data.append(
+            {
+                "title": apk.title,
+                "url": apk.url,
+                "source": apk.source,
+                "version": apk.version,
+                "developer": apk.developer,
+                "direct_download_url": apk.direct_download_url,
+            }
+        )
+
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "w") as f:
+        json.dump(apk_data, f, indent=2)
+
+    print(f"\nSaved {len(apk_data)} APK downloads to {file_path}")
+    return apk_data
+
+
+def download_apks_from_file(file_path, download_dir):
+    """Download APKs from a saved JSON file."""
+    if not os.path.exists(file_path):
+        print(f"Error: APK downloads file not found at {file_path}")
+        print("Run with -a --scrape-apkmirror first to create this file")
+        return
+
+    apk_data = load_json(file_path)
+    print(f"Loaded {len(apk_data)} APK downloads from {file_path}")
+
+    if not apk_data:
+        print("No APK downloads found in the file")
+        return
+
+    downloader = Downloader(download_dir=download_dir)
+
+    for apk_info in tqdm(apk_data, desc="Downloading APKs"):
+        if apk_info.get("direct_download_url"):
+            # Use title as filename or generate from URL
+            filename = apk_info.get("title")
+            if not filename.endswith(".apk"):
+                filename += ".apk"
+
+            print(f"\nDownloading: {apk_info.get('title', 'Unknown')}")
+            print(f"URL: {apk_info['direct_download_url']}")
+
+            try:
+                downloader.download_file(apk_info["direct_download_url"], filename)
+                print(f"Downloaded: {filename}")
+            except Exception as e:
+                print(f"Failed to download: {e}")
+
+
 def main():
+    check_constants()
+
     parser = argparse.ArgumentParser(description="APK Discovery Tool")
     parser.add_argument(
         "-g",
@@ -122,13 +205,35 @@ def main():
         action="store_true",
         help="Scrape APKMirror for APK download links",
     )
+    parser.add_argument(
+        "-sd",
+        "--save-downloads",
+        action="store_true",
+        help="Save scraped APK download links to file (use with -a)",
+    )
+    parser.add_argument(
+        "-dd",
+        "--direct-download",
+        action="store_true",
+        help="Directly download APKs after scraping (use with -a)",
+    )
+    parser.add_argument(
+        "-ld",
+        "--load-and-download",
+        action="store_true",
+        help="Load APK downloads from file and download them",
+    )
     args = parser.parse_args()
+
+    # Initialize variables
+    queries = []
+    filtered = []
+    all_apk_downloads = []
 
     # If no flags are provided, default to loading queries and results
     if not any(vars(args).values()):
         args.load_queries = True
         args.load_results = True
-        args.scrape_apkmirror = True
         print(
             "No flags provided. Defaulting to loading queries and search results from files.\n"
         )
@@ -139,8 +244,6 @@ def main():
     elif args.load_queries:
         queries = load_json(EXPANDED_QUERIES_FILE)
         print(f"Loaded {len(queries)} queries from {EXPANDED_QUERIES_FILE}")
-    else:
-        queries = []
 
     # Step 2: APK Search
     if args.search_apks and queries:
@@ -148,28 +251,64 @@ def main():
     elif args.load_results:
         filtered = load_json(SEARCH_RESULTS_FILE)
         print(f"Loaded {len(filtered)} APK search results from {SEARCH_RESULTS_FILE}")
-    else:
-        filtered = []
 
     # Step 3: Print search results
     if filtered:
+        print(f"\n{'=' * 50}")
+        print(f"SEARCH RESULTS ({len(filtered)} items):")
+        print(f"{'=' * 50}")
         for i in filtered:
-            print(f"{50 * '='} \nTitle: {i['title']} \nSnippet: {i['snippet']}")
+            print(f"\nTitle: {i['title']} \nSnippet: {i['snippet'][:100]}...")
 
     # Step 4: APKMirror scraping
     if args.scrape_apkmirror and filtered:
-        scraper = APKMirrorScraper(max_results=5)
+        scraper = APKMirrorScraper()
         all_apk_downloads = []
-        for result in tqdm(filtered[:1], desc="Obtaining APK info from APKMirror"):
-            print(filtered[0])
-            all_apk_downloads.append(scraper.search_and_download(result["title"]))
+        captured_results = set()
 
-        print("\nAPKMirror scraping done.")
-        # Optional: save or process all_apk_downloads
-        #
-    for apk_results in all_apk_downloads:
-        for apk in apk_results:
-            print(apk.to_dict())
+        print(f"\n{'=' * 50}")
+        print("SCRAPING APKMIRROR")
+        print(f"{'=' * 50}")
+
+        for result in tqdm(filtered, desc="Obtaining APK info from APKMirror"):
+            apk, captured_results = scraper.search_and_download(
+                result["title"], captured_results
+            )
+            if apk is not None:
+                all_apk_downloads.append(apk)
+
+        print(f"\nScraping complete. Found {len(all_apk_downloads)} APKs.")
+
+        # Display scraped APKs
+        for i, apk in enumerate(all_apk_downloads, 1):
+            print(f"\nAPK {i}:\n{apk}")
+
+        # Option 1: Save downloads to file
+        if args.save_downloads and all_apk_downloads:
+            save_apk_downloads_to_file(all_apk_downloads, DIRECT_DOWNLOADS_FILE)
+
+        # Option 2: Direct download after scraping
+        elif args.direct_download and all_apk_downloads:
+            print(f"\n{'=' * 50}")
+            print("DIRECT DOWNLOAD")
+            print(f"{'=' * 50}")
+            downloader = Downloader(download_dir=DOWNLOAD_DIRECTORY)
+            for apk in all_apk_downloads:
+                if apk.direct_download_url:
+                    filename = f"{apk.title}.apk"
+                    print(f"\nDownloading: {filename}")
+                    try:
+                        downloader.download_file(apk.direct_download_url, filename)
+                        print(f"Downloaded: {filename}")
+                    except Exception as e:
+                        print(f"Failed: {e}")
+
+    # Step 5: Load from file and download
+    if args.load_and_download:
+        if not DOWNLOAD_DIRECTORY:
+            print("Error: DOWNLOAD_DIRECTORY not configured in config.py")
+            return
+        download_apks_from_file(DIRECT_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
 
 
 if __name__ == "__main__":
