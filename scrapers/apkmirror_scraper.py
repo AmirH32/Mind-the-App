@@ -165,6 +165,42 @@ class APKMirrorScraper(BaseAPKScraper):
             logger.debug(f"Error parsing app row details: {e}")
             return None
 
+    def get_variant_link(self, APK_url: str) -> Optional[str]:
+        """
+        Get variant link from APK page.
+
+        Args:
+            APK_url: URL of the APK page
+        Returns:
+            Variant page URL or None
+        """
+        # Step 1: Go to app page
+        self._rate_limit()
+        response = self.scraper.get(APK_url, headers=self.headers, timeout=self.timeout)
+        # raises exception for HTTP errors
+        response.raise_for_status()
+
+        # Step 2: Use BeautifulSoup to parse the page
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Find the span child of the variant for the download link
+        apk_spans = soup.select("svg.icon.tag-icon")
+
+        apk_links = []
+        for span in apk_spans:
+            a = span.parent
+            if a.name == "a" and "accent_color" in a.get("class", []):
+                apk_links.append(a)
+
+        if not apk_links:
+            logger.warning("No variant links found")
+            return None
+
+        # Gets the first link
+        variant_page_url = urljoin(self.base_url, apk_links[0].get("href", ""))
+
+        return variant_page_url
+
     def get_download_link(self, result: APKResult) -> Optional[str]:
         """
         Get direct download link for an APKMirror result.
@@ -179,48 +215,50 @@ class APKMirrorScraper(BaseAPKScraper):
             return None
 
         try:
-            # Step 1: Go to app page
+            apk_url = result.url
+
+            # Step 3: Go to download page and find download button
             self._rate_limit()
-            response = self.scraper.get(
-                result.url, headers=self.headers, timeout=self.timeout
-            )
-            # raises exception for HTTP errors
-            response.raise_for_status()
-
-            # Step 2: Use BeautifulSoup to parse the page
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Find the span child of the variant for the download link
-            apk_spans = soup.select("svg.icon.tag-icon")
-
-            apk_links = []
-            for span in apk_spans:
-                a = span.parent
-                if a.name == "a" and "accent_color" in a.get("class", []):
-                    apk_links.append(a)
-
-            if not apk_links:
-                logger.warning("No variant links found")
-                return None
-
-            # Gets the first link
-            apk_url = urljoin(self.base_url, apk_links[0].get("href", ""))
-
-            # Step 3: Go to variant page to get download button
-            self._rate_limit()
-            variant_response = self.scraper.get(
+            download_response = self.scraper.get(
                 apk_url, headers=self.headers, timeout=self.timeout
             )
-            variant_response.raise_for_status()
+            download_response.raise_for_status()
 
             # Parses the download page
-            variant_soup = BeautifulSoup(variant_response.text, "html.parser")
+            download_page_soup = BeautifulSoup(download_response.text, "html.parser")
 
-            # Find download button
-            download_button = variant_soup.find("a", {"class": "downloadButton"})
-            if not download_button:
-                logger.warning("Download button not found")
-                return None
+            # find download button
+            download_button = download_page_soup.find(
+                "a",
+                {
+                    "class": "downloadButton",
+                    "href": lambda href: href
+                    and "#downloads" not in href
+                    and href.startswith("/apk/"),
+                },
+            )
+
+            if download_button is None:
+                logger.warning(
+                    "download button not found, attempting to get variant link..."
+                )
+                apk_url = self.get_variant_link(result.url)
+
+                self._rate_limit()
+                variant_response = self.scraper.get(
+                    apk_url, headers=self.headers, timeout=self.timeout
+                )
+                variant_response.raise_for_status()
+
+                # Re-parse the new response
+                variant_soup = BeautifulSoup(variant_response.text, "html.parser")
+                download_button = variant_soup.find("a", {"class": "downloadButton"})
+
+                if not download_button:
+                    logger.error(
+                        "Download button still not found after getting variant link"
+                    )
+                    return None
 
             download_page_url = urljoin(self.base_url, download_button.get("href", ""))
 
@@ -259,19 +297,19 @@ class APKMirrorScraper(BaseAPKScraper):
             return None
 
     def search_and_download(
-        self, query: str, captured_results: set
-    ) -> tuple[Optional[APKResult], set]:
+        self, query: str, captured_results: dict
+    ) -> tuple[Optional[APKResult], dict]:
         """
         Search for an APK and get its download link in one call.
 
         Args:
             query: Search query
-            captured_results: Set of already captured results to avoid duplicates
+            captured_results: Dict of already captured results to avoid duplicates
 
         Returns:
             Tuple containing:
                 - APKResult with download link, or None if not found
-                - Updated captured_results set
+                - Updated captured_results dictionary
         """
         result: Optional[APKResult] = None
 
@@ -290,22 +328,29 @@ class APKMirrorScraper(BaseAPKScraper):
                 return None, captured_results
 
             base_name = self._extract_base_name(result.title).lower()
-            if base_name in captured_results:
+            # If extracted download link and backup for this app then we don't need further copies
+            existing_result = captured_results.get(base_name)
+            if existing_result and existing_result.fallback_download_url:
                 self.apk_counter += 1
                 print("Duplicate found, skipping...")
                 continue
 
-            # Try to get download link
+            # Try to get download link if we have a result and don't have enough download links for APK
             download_link = self.get_download_link(result)
+
             if download_link is None:
                 self.apk_counter += 1
                 continue
 
-            # Attach download link and break loop
-            result.direct_download_url = download_link
-            captured_results.add(self._extract_base_name(result.title).lower())
-
-            break
+            if existing_result is None:
+                result.direct_download_url = download_link
+                captured_results[base_name] = result
+                self.apk_counter += 1
+                continue
+            else:
+                # Download and fallback URL found no need to search further
+                existing_result.fallback_download_url = download_link
+                break
 
         self.apk_counter = 0
-        return result, captured_results
+        return existing_result, captured_results

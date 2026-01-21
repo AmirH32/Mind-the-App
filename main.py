@@ -11,6 +11,7 @@ from query_provider.google_provider import GoogleQueryFinder
 from apk_finder.google_cse_client import GoogleAPKSearcher
 from scrapers.apkmirror_scraper import APKMirrorScraper
 from downloaders.downloader import Downloader
+from downloaders.cleaner import Cleaner
 from utils.config import (
     GOOGLE_API_KEY,
     GOOGLE_SEARCH_ENGINE_ID,
@@ -130,6 +131,7 @@ def save_apk_downloads_to_file(apk_downloads, file_path):
                 "version": apk.version,
                 "developer": apk.developer,
                 "direct_download_url": apk.direct_download_url,
+                "fallback_download_url": apk.fallback_download_url,
             }
         )
 
@@ -161,17 +163,25 @@ def download_apks_from_file(file_path, download_dir):
         if apk_info.get("direct_download_url"):
             # Use title as filename or generate from URL
             filename = apk_info.get("title")
-            if not filename.endswith(".apk"):
-                filename += ".apk"
+            download_url = apk_info["direct_download_url"]
+            fallback_url = apk_info.get("fallback_download_url")
 
             print(f"\nDownloading: {apk_info.get('title', 'Unknown')}")
-            print(f"URL: {apk_info['direct_download_url']}")
+            print(f"URL: {download_url}")
+            print(f"Fallback URL: {fallback_url}")
 
             try:
-                downloader.download_file(apk_info["direct_download_url"], filename)
+                downloader.download_file(download_url, filename)
                 print(f"Downloaded: {filename}")
             except Exception as e:
                 print(f"Failed to download: {e}")
+                if fallback_url:
+                    print("Attempting fallback URL...")
+                    try:
+                        downloader.download_file(fallback_url, filename)
+                        print(f"Downloaded via fallback: {filename}")
+                    except Exception as e2:
+                        print(f"Fallback download failed: {e2}")
 
 
 def main():
@@ -197,7 +207,7 @@ def main():
         "-r",
         "--load-results",
         action="store_true",
-        help="Load APK search results from file",
+        help="Load APK search results from file (use if you have ran main with -s flag before)",
     )
     parser.add_argument(
         "-a",
@@ -221,8 +231,16 @@ def main():
         "-ld",
         "--load-and-download",
         action="store_true",
-        help="Load APK downloads from file and download them",
+        help="Load APK downloads from file and download them (use if you have run main with -a and -sd flags before)",
     )
+
+    parser.add_argument(
+        "-c",
+        "--cleanup",
+        action="store_true",
+        help="Extact APKs from APKMs and remove APKMs and other non-APK file extensions (use with -dd or -ld flags)",
+    )
+
     args = parser.parse_args()
 
     # Initialize variables
@@ -264,7 +282,7 @@ def main():
     if args.scrape_apkmirror and filtered:
         scraper = APKMirrorScraper()
         all_apk_downloads = []
-        captured_results = set()
+        captured_results = {}
 
         print(f"\n{'=' * 50}")
         print("SCRAPING APKMIRROR")
@@ -283,19 +301,19 @@ def main():
         for i, apk in enumerate(all_apk_downloads, 1):
             print(f"\nAPK {i}:\n{apk}")
 
-        # Option 1: Save downloads to file
+        # Save downloads to file
         if args.save_downloads and all_apk_downloads:
             save_apk_downloads_to_file(all_apk_downloads, DIRECT_DOWNLOADS_FILE)
 
-        # Option 2: Direct download after scraping
-        elif args.direct_download and all_apk_downloads:
+        # Direct download after scraping
+        if args.direct_download and all_apk_downloads:
             print(f"\n{'=' * 50}")
             print("DIRECT DOWNLOAD")
             print(f"{'=' * 50}")
             downloader = Downloader(download_dir=DOWNLOAD_DIRECTORY)
             for apk in all_apk_downloads:
                 if apk.direct_download_url:
-                    filename = f"{apk.title}.apk"
+                    filename = f"{apk.title}"
                     print(f"\nDownloading: {filename}")
                     try:
                         downloader.download_file(apk.direct_download_url, filename)
@@ -309,6 +327,21 @@ def main():
             print("Error: DOWNLOAD_DIRECTORY not configured in config.py")
             return
         download_apks_from_file(DIRECT_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
+
+    # Step 6: Cleanup downloaded files
+    if args.cleanup:
+        print(f"WARNING: This will:")
+        print(f"  1. Extract base.apk from APKM files")
+        print(f"  2. Rename them as [original_name]_base.apk")
+        print(f"  3. DELETE the original APKM files")
+        print(f"  4. DELETE all non-APK files")
+        print(f"\nTarget directory: {DOWNLOAD_DIRECTORY}")
+
+        response = input("\nContinue? (yes/no): ").strip().lower()
+        if response in ["y", "yes"]:
+            Cleaner.process_directory(DOWNLOAD_DIRECTORY)
+        else:
+            print("Operation cancelled.")
 
 
 if __name__ == "__main__":

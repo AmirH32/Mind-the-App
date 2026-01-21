@@ -19,6 +19,7 @@ class APKResult:
         version (Optional[str]): APK version string.
         developer (Optional[str]): Developer or publisher of the APK.
         direct_download_url (Optional[str]): Direct link to download the APK, if available.
+        fallback_download_url (Optional[str]): Fallback link to download the APK, if direct link is not available.
     """
 
     title: str
@@ -28,6 +29,7 @@ class APKResult:
     version: Optional[str] = None
     developer: Optional[str] = None
     direct_download_url: Optional[str] = None
+    fallback_download_url: Optional[str] = None
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for serialization."""
@@ -86,8 +88,7 @@ class BaseAPKScraper(ABC):
             query (str): The search term.
 
         Returns:
-            List[APKResult]: List of APK search results.\
-            set: Set of already captured result titles.
+            APKResult object otherwise None.\
 
         Raises:
             NotImplementedError: Must be implemented in subclasses.
@@ -111,17 +112,17 @@ class BaseAPKScraper(ABC):
 
     @abstractmethod
     def search_and_download(
-        self, query: str, captured_results: set
-    ) -> tuple[Optional[APKResult], set]:
+        self, query: str, captured_results: dict
+    ) -> tuple[Optional[APKResult], dict]:
         """Search for APKs and retrieve their download links.
 
         Args:
             query (str): The search term.
-            captured_results (set): Set of already captured result titles to avoid duplicates.
+            captured_results (Dict): Dict of already captured result titles to avoid duplicates but allow for one fallback download link retrieval.
 
         Returns:
-            List[APKResult]: List of APK search results with download links.
-            set: Set of already captured result titles
+            APKResult: APK search result with download links otherwise None.
+            dict: Set of already captured result titles
 
         Raises:
             NotImplementedError: Must be implemented in subclasses.
@@ -134,7 +135,7 @@ class BaseAPKScraper(ABC):
 
         time.sleep(self.rate_limit_delay)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self):
         """Close the HTTP session if it exists."""
         if self.session:
             self.session.close()
