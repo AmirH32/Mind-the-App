@@ -3,6 +3,7 @@ import os
 import json
 import time
 import argparse
+import requests
 from tqdm import tqdm
 from dotenv import load_dotenv
 
@@ -10,7 +11,9 @@ from query_snowballer.snowballer import QuerySnowballer
 from query_provider.google_provider import GoogleQueryFinder
 from apk_finder.google_cse_client import GoogleAPKSearcher
 from scrapers.apkmirror_scraper import APKMirrorScraper
-from downloaders.downloader import Downloader
+
+# from downloaders.downloader import Downloader
+from downloaders.selenium_downloader import SeleniumDownloader
 from downloaders.cleaner import Cleaner
 from utils.config import (
     GOOGLE_API_KEY,
@@ -19,6 +22,8 @@ from utils.config import (
     SEARCH_RESULTS_FILE,
     DOWNLOAD_DIRECTORY,
     DIRECT_DOWNLOADS_FILE,
+    PROGRESS_FILE,
+    TEMP_DOWNLOADS_FILE,
 )
 
 load_dotenv()
@@ -39,9 +44,27 @@ def check_constants():
         missing.append("SEARCH_RESULTS_FILE")
     if not isinstance(DIRECT_DOWNLOADS_FILE, str):
         missing.append("DIRECT_DOWNLOADS_FILE")
+    if not isinstance(PROGRESS_FILE, str):
+        missing.append("PROGRESS_FILE")
+    if not isinstance(TEMP_DOWNLOADS_FILE, str):
+        missing.append("TEMP_DOWNLOAD_FILE")
     if missing:
-        print(f"Error: Missing configuration for {', '.join(missing)} in config.py")
-        exit(1)
+        raise ValueError(f"Missing or invalid constants: {', '.join(missing)}")
+
+
+def get_top_apple_apps(limit=75):
+    """Fetches top free iOS app titles using Apple's RSS feed because google play store scraper doesn't have a list of top apps we can access"""
+    print(f"Fetching top {limit} Apple apps...")
+    url = f"https://itunes.apple.com/us/rss/topfreeapplications/limit={limit}/json"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        apps = data["feed"]["entry"]
+        # Extract the titles
+        return [app["im:name"]["label"] for app in apps]
+    except Exception as e:
+        print(f"Error fetching Apple apps: {e}")
+        return []
 
 
 def find_and_save_queries():
@@ -53,21 +76,40 @@ def find_and_save_queries():
         "family locator",
         "find my phone",
         "mobile monitoring app",
+        "track my girlfriend's phone without them knowing",
+        "how to catch my cheating spouse",
+        "track my husband's phone without them knowing",
+        "read SMS from another phone",
+        "how can I read my wife's texts",
+        "phone spy on husband",
+        "see who bf is texting without him knowing",
+        "how to catch a cheating spouse with his cell phone",
+        "track wife's location",
+        "app to track girlfriend",
+        "track your husband",
+        "track my spouse",
+        "track my couple",
+        "SMS tracker",
+        "Cereberus",
+        "Mspy",
+        "Maps",
     ]
 
     provider = GoogleQueryFinder()
     snowballer = QuerySnowballer(
-        provider=provider, max_depth=2, max_queries=50, per_query_limit=10
+        provider=provider, max_depth=5, max_queries=200, per_query_limit=10
     )
 
     all_queries = snowballer.expand(seed_queries)
+    # Add top 75 apple apps
+    all_queries.extend(get_top_apple_apps(75))
 
     print("Expanded Queries:")
     for q in all_queries:
         print("-", q)
 
-    os.makedirs(os.path.dirname(EXPANDED_QUERIES_FILE), exist_ok=True)
-    with open(EXPANDED_QUERIES_FILE, "w") as f:
+    os.makedirs(os.path.dirname(EXPANDED_QUERIES_FILE), exist_ok=True)  # pyright: ignore
+    with open(EXPANDED_QUERIES_FILE, "w") as f:  # pyright: ignore
         json.dump(all_queries, f, indent=2)
 
     print(f"\nSaved expanded queries to {EXPANDED_QUERIES_FILE}")
@@ -76,13 +118,18 @@ def find_and_save_queries():
 
 def search_and_save_apks(queries, max_queries=10):
     """Search Google Custom Search for APKs and save results."""
-    apk_searcher = GoogleAPKSearcher(GOOGLE_API_KEY, GOOGLE_SEARCH_ENGINE_ID)
+    apk_searcher = GoogleAPKSearcher(GOOGLE_API_KEY, GOOGLE_SEARCH_ENGINE_ID)  # pyright: ignore
     all_results = []
 
     for query in tqdm(queries[:max_queries], desc="Searching APKs"):
         time.sleep(3)
-        results = apk_searcher.search_apks(query, 5)
-        all_results.extend(results)
+        try:
+            # In case internet crashes or the API runs out of searches
+            results = apk_searcher.search_apks(query, 5)
+            all_results.extend(results)
+        except Exception as e:
+            print(f"Error searching for query: {query}\nException: {e}")
+            continue
 
     # Remove duplicates by title and clean text
     seen_titles = set()
@@ -94,8 +141,8 @@ def search_and_save_apks(queries, max_queries=10):
             seen_titles.add(title)
             filtered.append({"title": title, "snippet": snippet})
 
-    os.makedirs(os.path.dirname(SEARCH_RESULTS_FILE), exist_ok=True)
-    with open(SEARCH_RESULTS_FILE, "w") as f:
+    os.makedirs(os.path.dirname(SEARCH_RESULTS_FILE), exist_ok=True)  # pyright: ignore
+    with open(SEARCH_RESULTS_FILE, "w") as f:  # pyright: ignore
         json.dump(filtered, f, indent=2)
 
     print(f"\nSaved search results to {SEARCH_RESULTS_FILE}")
@@ -122,6 +169,15 @@ def load_json(file_path):
 def save_apk_downloads_to_file(apk_downloads, file_path):
     """Save APK download information to JSON file."""
     apk_data = []
+
+    # Read the old download data so we can append to the file
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                apk_data = json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not read existing file, starting fresh: {e}")
+
     for apk in apk_downloads:
         apk_data.append(
             {
@@ -157,31 +213,73 @@ def download_apks_from_file(file_path, download_dir):
         print("No APK downloads found in the file")
         return
 
-    downloader = Downloader(download_dir=download_dir)
+    downloader = SeleniumDownloader(download_dir=download_dir)
 
-    for apk_info in tqdm(apk_data, desc="Downloading APKs"):
-        if apk_info.get("direct_download_url"):
-            # Use title as filename or generate from URL
-            filename = apk_info.get("title")
-            download_url = apk_info["direct_download_url"]
-            fallback_url = apk_info.get("fallback_download_url")
+    try:
+        for apk_info in tqdm(apk_data, desc="Downloading APKs"):
+            if apk_info.get("direct_download_url"):
+                # Use title as filename or generate from URL
+                # filename = apk_info.get("title")
+                download_url = apk_info["direct_download_url"]
+                fallback_url = apk_info.get("fallback_download_url")
 
-            print(f"\nDownloading: {apk_info.get('title', 'Unknown')}")
-            print(f"URL: {download_url}")
-            print(f"Fallback URL: {fallback_url}")
+                print(f"\nDownloading: {apk_info.get('title', 'Unknown')}")
+                print(f"URL: {download_url}")
+                print(f"Fallback URL: {fallback_url}")
 
-            try:
-                downloader.download_file(download_url, filename)
-                print(f"Downloaded: {filename}")
-            except Exception as e:
-                print(f"Failed to download: {e}")
-                if fallback_url:
-                    print("Attempting fallback URL...")
-                    try:
-                        downloader.download_file(fallback_url, filename)
-                        print(f"Downloaded via fallback: {filename}")
-                    except Exception as e2:
-                        print(f"Fallback download failed: {e2}")
+                try:
+                    file_path = downloader.download_file(download_url)
+                    print(f"Downloaded: {file_path}")
+                except Exception as e:
+                    print(f"Failed to download: {e}")
+                    if fallback_url:
+                        print("Attempting fallback URL...")
+                        try:
+                            file_path = downloader.download_file(fallback_url)
+                            print(f"Downloaded via fallback: {file_path}")
+                        except Exception as e2:
+                            print(f"Fallback download failed: {e2}")
+    finally:
+        downloader.close()
+
+
+def chunk_queries(queries: list[str], size: int):
+    """Yield successive n-sized chunks from queries."""
+    for i in range(0, len(queries), size):
+        yield queries[i : i + size]
+
+
+def load_finished() -> list[str]:
+    """Load app files that we have finished scraping and downloading"""
+    if os.path.exists(PROGRESS_FILE):  #  pyright: ignore
+        with open(PROGRESS_FILE, "r") as f:  #  pyright: ignore
+            return json.load(f)
+    return []
+
+
+def save_finished(title: str):
+    finished = load_finished()
+    if title not in finished:
+        finished.append(title)
+        with open(PROGRESS_FILE, "w") as f:  #  pyright: ignore
+            json.dump(finished, f)
+
+
+def already_downloaded(apk, download_dir: str) -> bool:
+    """
+    Returns True if an APK with same title + version
+    already exists in download directory.
+    """
+    expected_fragment = f"{apk.title} {apk.version}".lower()
+
+    print(f"Looking for file {expected_fragment} in {download_dir}... Not found.")
+
+    for file in os.listdir(download_dir):
+        if file.lower().endswith((".apk", ".apkm")):
+            if expected_fragment in file.lower():
+                return True
+
+    return False
 
 
 def main():
@@ -214,6 +312,12 @@ def main():
         "--scrape-apkmirror",
         action="store_true",
         help="Scrape APKMirror for APK download links",
+    )
+    parser.add_argument(
+        "-b",
+        "--batch",
+        action="store_true",
+        help="Scrapes and saves applications in batches of 20, saving progress with each batch",
     )
     parser.add_argument(
         "-sd",
@@ -265,7 +369,7 @@ def main():
 
     # Step 2: APK Search
     if args.search_apks and queries:
-        filtered = search_and_save_apks(queries)
+        filtered = search_and_save_apks(queries, len(queries))
     elif args.load_results:
         filtered = load_json(SEARCH_RESULTS_FILE)
         print(f"Loaded {len(filtered)} APK search results from {SEARCH_RESULTS_FILE}")
@@ -310,36 +414,97 @@ def main():
             print(f"\n{'=' * 50}")
             print("DIRECT DOWNLOAD")
             print(f"{'=' * 50}")
-            downloader = Downloader(download_dir=DOWNLOAD_DIRECTORY)
-            for apk in all_apk_downloads:
-                if apk.direct_download_url:
-                    filename = f"{apk.title}"
-                    print(f"\nDownloading: {filename}")
-                    try:
-                        downloader.download_file(apk.direct_download_url, filename)
-                        print(f"Downloaded: {filename}")
-                    except Exception as e:
-                        print(f"Failed: {e}")
+            downloader = SeleniumDownloader(download_dir=DOWNLOAD_DIRECTORY)  # pyright: ignore
+            try:
+                for apk in all_apk_downloads:
+                    if apk.direct_download_url:
+                        filename = f"{apk.title}"
+                        print(f"\nDownloading: {filename}")
+                        try:
+                            file_path = downloader.download_file(
+                                apk.direct_download_url
+                            )
+                            print(f"Downloaded: {file_path}")
+                        except Exception as e:
+                            print(f"Failed: {e}")
+            finally:
+                downloader.close()
+
+    # Step 4b: Batching scraping and downloads
+    if args.batch and filtered:
+        scraper = APKMirrorScraper()
+        captured_results = {}
+
+        downloaded = load_finished()
+        print("STARTING BATCHED SCRAPING AND DOWNLOADING")
+
+        BATCH_SIZE = 20
+
+        batches = chunk_queries(filtered, BATCH_SIZE)
+        numbered_batches = enumerate(batches, start=1)
+
+        for i, batch_items in numbered_batches:
+            print(
+                f"\n> PROCESSING BATCH {i} (Items {((i - 1) * BATCH_SIZE) + 1} to {i * BATCH_SIZE})"
+            )
+
+            batch_apks = []
+            newly_fin = []
+
+            for result in tqdm(batch_items, desc=f"Scraping Batch {i}"):
+                title = result["title"]  # pyright: ignore
+
+                # If we have seen the title before and downloaded it we should skip
+                if title in downloaded:
+                    continue
+
+                try:
+                    apk, captured_results = scraper.search_and_download(
+                        title, captured_results
+                    )
+
+                    if apk is not None:
+                        batch_apks.append(apk)
+
+                    downloaded.append(title)
+                    newly_fin.append(title)
+
+                except Exception as e:
+                    print(f"Error processing {title}: {e}")
+                    continue
+
+            if os.path.exists(TEMP_DOWNLOADS_FILE):  # pyright: ignore
+                os.remove(TEMP_DOWNLOADS_FILE)  # pyright: ignore
+
+            if batch_apks:
+                save_apk_downloads_to_file(batch_apks, DIRECT_DOWNLOADS_FILE)
+                save_apk_downloads_to_file(batch_apks, TEMP_DOWNLOADS_FILE)
+                download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
+
+            for title in newly_fin:
+                save_finished(title)
+
+            print(f"Batch {i} completed.")
 
     # Step 5: Load from file and download
     if args.load_and_download:
         if not DOWNLOAD_DIRECTORY:
             print("Error: DOWNLOAD_DIRECTORY not configured in config.py")
             return
-        download_apks_from_file(DIRECT_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
+        download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
 
     # Step 6: Cleanup downloaded files
     if args.cleanup:
-        print(f"WARNING: This will:")
-        print(f"  1. Extract base.apk from APKM files")
-        print(f"  2. Rename them as [original_name]_base.apk")
-        print(f"  3. DELETE the original APKM files")
-        print(f"  4. DELETE all non-APK files")
+        print("WARNING: This will:")
+        print("  1. Extract base.apk from APKM files")
+        print("  2. Rename them as [original_name]_base.apk")
+        print("  3. DELETE the original APKM files")
+        print("  4. DELETE all non-APK files")
         print(f"\nTarget directory: {DOWNLOAD_DIRECTORY}")
 
         response = input("\nContinue? (yes/no): ").strip().lower()
         if response in ["y", "yes"]:
-            Cleaner.process_directory(DOWNLOAD_DIRECTORY)
+            Cleaner.process_directory(DOWNLOAD_DIRECTORY)  # pyright: ignore
         else:
             print("Operation cancelled.")
 

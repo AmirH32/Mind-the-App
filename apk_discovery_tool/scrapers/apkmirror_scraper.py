@@ -8,7 +8,10 @@ from scrapers.base_scraper import BaseAPKScraper
 from scrapers.base_scraper import APKResult
 import cloudscraper  # scraper to bypass cloudflare
 from bs4 import BeautifulSoup
+from requests import Response
 import logging
+import random
+import time
 import re
 
 
@@ -33,9 +36,9 @@ class APKMirrorScraper(BaseAPKScraper):
         timeout: int = 10,
         user_agent: Optional[str] = None,
         max_results: int = 10,
-        rate_limit_delay: float = 2.0,
     ):
-        super().__init__(timeout, user_agent, max_results, rate_limit_delay)
+        # Use default rate_limit_delay of 7 seconds as the lower limit from the base class
+        super().__init__(timeout, user_agent, max_results)
 
         self.base_url = "https://www.apkmirror.com"
         self.search_url = f"{self.base_url}/?post_type=app_release&searchtype=apk&s="
@@ -45,6 +48,27 @@ class APKMirrorScraper(BaseAPKScraper):
         )
         self.cached_search = ""
         self.apk_counter = 0
+
+    def safe_get(self, url: str) -> Optional[Response]:
+        """Request wrapper to prevent blocking"""
+        retries = 5
+        for attempt in range(retries):
+            response = self.scraper.get(url, headers=self.headers, timeout=self.timeout)
+
+            if response.status_code == 200:
+                time.sleep(
+                    random.uniform(self.rate_limit_delay, self.rate_limit_delay + 10)
+                )
+                return response
+
+            if response.status_code == 429:
+                # Exponential backoff since we got blocked
+                wait = (2**attempt) * 60
+                time.sleep(wait)
+                continue
+
+            response.raise_for_status()
+        return None
 
     def search(self, query: str) -> Optional[APKResult]:
         """
@@ -67,10 +91,12 @@ class APKMirrorScraper(BaseAPKScraper):
 
         try:
             if self.apk_counter == 0:
-                response = self.scraper.get(
-                    search_url, headers=self.headers, timeout=self.timeout
-                )
-                response.raise_for_status()
+                response = self.safe_get(search_url)
+
+                if response is None:
+                    print(f"Failed to retrieve a result for {query}..")
+                    return None
+
                 self.cached_search = response.text
 
             return self._parse_search_results(self.cached_search)
@@ -176,9 +202,11 @@ class APKMirrorScraper(BaseAPKScraper):
         """
         # Step 1: Go to app page
         self._rate_limit()
-        response = self.scraper.get(APK_url, headers=self.headers, timeout=self.timeout)
-        # raises exception for HTTP errors
-        response.raise_for_status()
+        response = self.safe_get(APK_url)
+
+        if response is None:
+            print(f"Failed to get a response from {APK_url}...")
+            return None
 
         # Step 2: Use BeautifulSoup to parse the page
         soup = BeautifulSoup(response.text, "html.parser")
@@ -219,10 +247,11 @@ class APKMirrorScraper(BaseAPKScraper):
 
             # Step 3: Go to download page and find download button
             self._rate_limit()
-            download_response = self.scraper.get(
-                apk_url, headers=self.headers, timeout=self.timeout
-            )
-            download_response.raise_for_status()
+            download_response = self.safe_get(apk_url)
+
+            if download_response is None:
+                print(f"Failed to get download page ({apk_url})...")
+                return None
 
             # Parses the download page
             download_page_soup = BeautifulSoup(download_response.text, "html.parser")
@@ -232,9 +261,9 @@ class APKMirrorScraper(BaseAPKScraper):
                 "a",
                 {
                     "class": "downloadButton",
-                    "href": lambda href: href
-                    and "#downloads" not in href
-                    and href.startswith("/apk/"),
+                    "href": lambda href: (
+                        href and "#downloads" not in href and href.startswith("/apk/")
+                    ),
                 },
             )
 
@@ -244,11 +273,16 @@ class APKMirrorScraper(BaseAPKScraper):
                 )
                 apk_url = self.get_variant_link(result.url)
 
+                if apk_url is None:
+                    print(f"Failed to get the apk page ({result.url})...")
+                    return None
+
                 self._rate_limit()
-                variant_response = self.scraper.get(
-                    apk_url, headers=self.headers, timeout=self.timeout
-                )
-                variant_response.raise_for_status()
+                variant_response = self.safe_get(apk_url)
+
+                if variant_response is None:
+                    print(f"Failed to get the variant link page ({apk_url})...")
+                    return None
 
                 # Re-parse the new response
                 variant_soup = BeautifulSoup(variant_response.text, "html.parser")
@@ -266,12 +300,12 @@ class APKMirrorScraper(BaseAPKScraper):
             self._rate_limit()
             download_headers = self.headers.copy()
             download_headers["Referer"] = apk_url
-            download_response = self.scraper.get(
-                download_page_url, headers=self.headers, timeout=self.timeout
-            )
-            download_response.raise_for_status()
+            download_response = self.safe_get(download_page_url)
 
-            download_soup = BeautifulSoup(download_response.text, "html.parser")
+            if download_response is None:
+                print(f"Failed to get the download page ({download_page_url})...")
+
+            download_soup = BeautifulSoup(download_response.text, "html.parser")  # pyright: ignore
 
             # Find the actual download link
             download_link = download_soup.find(
@@ -279,8 +313,9 @@ class APKMirrorScraper(BaseAPKScraper):
                 {
                     "rel": "nofollow",
                     "data-google-interstitial": "false",
-                    "href": lambda href: href
-                    and "/wp-content/themes/APKMirror/download.php" in href,
+                    "href": lambda href: (
+                        href and "/wp-content/themes/APKMirror/download.php" in href
+                    ),
                 },
             )
 

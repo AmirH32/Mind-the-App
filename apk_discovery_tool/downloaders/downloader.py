@@ -4,20 +4,12 @@ import requests
 from tqdm import tqdm
 from typing import Optional
 from urllib.parse import urlparse, unquote
+from .base_downloader import BaseDownloader
 
 
-class Downloader:
-    def __init__(self, download_dir: str):
-        self.download_dir = download_dir
-        os.makedirs(download_dir, exist_ok=True)
-
-    def _extract_extension_from_url(self, url: str) -> Optional[str]:
-        """
-        Extract extension from URL path, handling encoded characters.
-
-        :param url: URL to extract extension from
-        :return: Extracted filename or None
-        """
+class Downloader(BaseDownloader):
+    def _extract_ext_from_url(self, url: str) -> Optional[str]:
+        """Attempt to get a file extension from a URL's path"""
         try:
             # Parse URL into components
             parsed = urlparse(url)
@@ -29,31 +21,28 @@ class Downloader:
             if "?" in filename:
                 filename = filename.split("?")[0]
 
-            # Gets the file extension
-            extension = os.path.splitext(filename)[1]
+            # Gets the file extension using splittext functionality
+            ext = os.path.splitext(filename)[1]  # Includes the dot
+            if ext is None:
+                return None
+            else:
+                return ext
 
-            return extension if extension else None
         except Exception:
             return None
 
-    def _get_filename_from_response(
+    def _get_filename(
         self, response: requests.Response, filename: Optional[str] = None
     ) -> str:
-        """
-        Determine the correct filename from the response headers or URL.
-
-        :param response: HTTP response object
-        :param fallback_filename: Fallback filename if detection fails
-        :return: Determined filename
-        """
-        # Try Content-Disposition header first
-        content_disp = response.headers.get("Content-Disposition", "")
-        if content_disp and "filename=" in content_disp:
+        """Figure out the best filename to save the file as"""
+        # Check content-dispostiion header
+        c_disp = response.headers.get("Content-Disposition", "")
+        if c_disp and "filename=" in c_disp:
             try:
                 # Parse filename from Content-Disposition
-                parts = content_disp.split("filename=")
+                parts = c_disp.split("filename=")
                 if len(parts) > 1:
-                    filename = parts[1].strip().strip('"').strip("'")
+                    filename = parts[1].strip(" \"'")
                     if filename:
                         return filename
             except Exception:
@@ -61,58 +50,57 @@ class Downloader:
 
         # Try to extract from the final URL after redirects
         final_url = response.url
-        extension = self._extract_extension_from_url(final_url)
+        ext_from_url = self._extract_ext_from_url(final_url)
 
-        if filename and (filename.endswith(".apk") or filename.endswith(".apkm")):
-            return filename
-        elif filename:
-            # Append detected extension if available
-            if extension:
-                return f"{filename}{extension}"
+        if filename:
+            if filename.endswith(".apk") or filename.endswith(".apkm"):
+                return filename
+            # Append detected extension if available to argument passed filename
+            if ext_from_url:
+                return f"{filename}{ext_from_url}"
             return filename
         else:
+            # Otherwise give default name
             return "downloaded_file.apk"
 
-    def download_file(self, url: str, filename: Optional[str] = None) -> str:
-        """
-        Downloads a file from a URL, automatically detecting the correct file extension.
-
-        :param url: URL of the file
-        :param filename: Optional filename to save as. Extension will be auto-detected.
-        :return: Path to downloaded file
-        """
+    def download_file(self, url: str, filename: Optional[str] = None) -> Optional[str]:
+        """Downloads the file"""
         headers = {
             "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
+                "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
             ),
             "Referer": "https://www.apkmirror.com/",
             "Accept": "*/*",
         }
 
-        # Stream download with allow_redirects to follow redirects
-        with requests.get(url, headers=headers, stream=True, allow_redirects=True) as r:
-            # Raise errors for HTTP codes
-            r.raise_for_status()
-
+        with requests.get(
+            url, headers=headers, stream=True, allow_redirects=True
+        ) as request:
+            print(f"Downloading from: {request.url}")
             # Determine the actual filename from response
-            actual_filename = self._get_filename_from_response(r, filename)
+            actual_filename = self._get_filename(request, filename)
 
-            filepath = os.path.join(self.download_dir, actual_filename)
+            fullpath = os.path.join(self.download_dir, actual_filename)
 
-            total_size = int(r.headers.get("content-length", 0))
+            if os.path.exists(fullpath):
+                # Ensures we don't re download files that have already been downloaded in prior runs
+                print("File already exists... Skipping")
+                return fullpath
+
+            total_size = int(request.headers.get("content-length", 0))
             chunk_size = 8192
 
             with (
-                open(filepath, "wb") as f,
+                open(fullpath, "wb") as f,
+                # Use tqdm parameters to show units for the file size
                 tqdm(
                     total=total_size, unit="B", unit_scale=True, desc=actual_filename
                 ) as pbar,
             ):
-                for chunk in r.iter_content(chunk_size=chunk_size):
+                # Reads the request as a stream of chunbks
+                for chunk in request.iter_content(chunk_size=chunk_size):
                     f.write(chunk)
                     pbar.update(len(chunk))
 
-        print(f"Downloaded: {filepath}")
-        return filepath
+        print(f"Downloaded: {fullpath}")
+        return fullpath

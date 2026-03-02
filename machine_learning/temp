@@ -1,0 +1,160 @@
+    def plot_comparison(self, results_df: pd.DataFrame):
+        """Create visualization of model comparison"""
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        fig.suptitle("Model Performance Comparison", fontsize=16)
+
+        metrics = ["Accuracy", "Precision", "Recall", "F1-Score"]
+
+        for idx, metric in enumerate(metrics):
+            ax = axes[idx // 2, idx % 2]
+            # Convert strings to float for plotting
+            values = results_df[metric].astype(float)
+            ax.barh(results_df["Model"], values)
+            ax.set_xlabel(metric)
+            ax.set_xlim(0, 1)
+            ax.set_title(f"{metric} Comparison")
+
+            # Add value labels
+            for i, v in enumerate(values):
+                ax.text(v + 0.01, i, f"{v:.3f}", va="center")
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.output_dir, "model_comparison.png"), dpi=300)
+        plt.show()
+
+    def plot_feature_importance(self, top_n: int = 15):
+        """Plot feature importance for models that support it"""
+        importance_dfs = []
+
+        for name, model in self.trained_models.items():
+            if name != "consensus" and hasattr(model, "get_feature_importance"):
+                importance_df = model.get_feature_importance(self.feature_names)
+                importance_df["model"] = name.replace("_", " ").title()
+                importance_dfs.append(importance_df.head(top_n))
+
+        if importance_dfs:
+            combined_importance = pd.concat(importance_dfs)
+
+            plt.figure(figsize=(12, 8))
+            for i, (model_name, group) in enumerate(
+                combined_importance.groupby("model")
+            ):
+                plt.subplot(2, 2, i + 1)
+                sns.barplot(x="importance", y="feature", data=group.head(10))
+                plt.title(f"Top Features - {model_name}")
+                plt.tight_layout()
+
+            plt.suptitle("Feature Importance Across Models", fontsize=16)
+            plt.tight_layout()
+            plt.savefig(
+                os.path.join(self.output_dir, "feature_importance.png"), dpi=300
+            )
+            plt.show()
+
+    def save_models(self):
+        """Save all trained models"""
+        for name, model in self.trained_models.items():
+            model_path = os.path.join(self.output_dir, f"{name}_model.pkl")
+            joblib.dump(model, model_path)
+            print(f"✓ Saved {name} model to: {model_path}")
+
+    def run(self, model_types: List[str], use_consensus: bool = False):
+        """Main execution pipeline"""
+        print(f"\n{'=' * 80}")
+        print("APK MALWARE DETECTION - ADVANCED ML PIPELINE")
+        print(f"{'=' * 80}")
+
+        # Load and prepare data
+        X, y = self.load_and_prepare_data()
+        self.split_data(X, y)
+
+        # Train models
+        if use_consensus:
+            print(f"\nTraining consensus model with: {', '.join(model_types)}")
+            self.train_consensus(model_types)
+        elif len(model_types) == 1:
+            print(f"\nTraining single model: {model_types[0]}")
+            self.train_single_model(model_types[0])
+        else:
+            print(f"\nTraining multiple models: {', '.join(model_types)}")
+            for model_type in model_types:
+                self.train_single_model(model_type)
+
+        # Evaluate
+        results_df = self.evaluate_all_models()
+
+        # Visualizations
+        self.plot_comparison(results_df)
+        self.plot_feature_importance()
+
+        # Save models
+        self.save_models()
+
+        print(f"\n{'=' * 80}")
+        print("TRAINING COMPLETE")
+        print(f"{'=' * 80}")
+
+
+def main():
+    """Command line interface"""
+    parser = argparse.ArgumentParser(
+        description="APK Malware Detection ML Pipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python train_advanced.py --models random_forest                    # Single model
+  python train_advanced.py --models random_forest logistic svm      # Multiple models
+  python train_advanced.py --models all --consensus                 # All models with consensus
+  python train_advanced.py --models rf logistic --output my_models  # Custom output dir
+        """,
+    )
+
+    parser.add_argument(
+        "--models",
+        "-m",
+        nargs="+",
+        default=["random_forest"],
+        choices=["random_forest", "logistic", "svm", "gradient_boosting", "all", "rf"],
+        help='Models to train (use "all" for all models)',
+    )
+
+    parser.add_argument(
+        "--consensus",
+        "-c",
+        action="store_true",
+        help="Use consensus voting with trained models",
+    )
+
+    parser.add_argument(
+        "--output", "-o", default="models", help="Output directory for saved models"
+    )
+
+    parser.add_argument("--csv", "-i", default=CSV_FILE, help="Path to input CSV file")
+
+    args = parser.parse_args()
+
+    # Handle model aliases
+    if "all" in args.models:
+        model_types = ["random_forest", "logistic", "svm", "gradient_boosting"]
+    elif "rf" in args.models:
+        model_types = ["random_forest"]
+        if len(args.models) > 1:
+            model_types.extend([m for m in args.models if m != "rf"])
+    else:
+        model_types = args.models
+
+    # Create and run detector
+    detector = APKMalwareDetector(csv_path=args.csv, output_dir=args.output)
+
+    try:
+        detector.run(model_types=model_types, use_consensus=args.consensus)
+    except Exception as e:
+        print(f"\nError: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

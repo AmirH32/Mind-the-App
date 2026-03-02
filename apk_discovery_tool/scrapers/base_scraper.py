@@ -65,7 +65,7 @@ class BaseAPKScraper(ABC):
         timeout: int = 10,
         user_agent: Optional[str] = None,
         max_results: int = 10,
-        rate_limit_delay: float = 1.0,
+        rate_limit_delay: float = 7.0,
     ):
         self.timeout = timeout
         self.max_results = max_results
