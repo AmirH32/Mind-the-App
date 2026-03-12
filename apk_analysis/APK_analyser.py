@@ -15,26 +15,6 @@ from pathlib import Path
 from typing import List
 
 
-def get_suspicious_permissions() -> List[str]:
-    """
-    Extracts suspicious permissions from a JSON file.
-
-    Returns:
-        List[str]: List of suspicious permission names.
-    """
-    try:
-        with open("suspicious_permissions.json", "r") as file:
-            data = json.load(file)
-            if isinstance(data, list):
-                return [item["name"] for item in data]
-            else:
-                print("Invalid format in suspicious_permissions.json.")
-                return []
-    except FileNotFoundError:
-        print("suspicious_permissions.json file not found.")
-        return []
-
-
 class APK:
     def __init__(self, apk_path: str, suspicious_list: List[str]):
         """
@@ -50,6 +30,7 @@ class APK:
         self._app_name = self._apk.get_app_name()
         self._version_name = self._apk.get_androidversion_name()
         self._permissions = self._apk.get_permissions() or []
+        self._suspicious_list = suspicious_list
         self._suspicious_permissions = self._identify_suspicious_permissions()
         self._suspicious_implied_perms = self._identify_suspicious_implied_permissions()
         self._target_old_sdk = self._apk.get_target_sdk_version() <= "19"
@@ -106,9 +87,8 @@ class APK:
         list: A list of suspicious permissions.
         """
         flagged_perms = []
-        suspicious_permissions = get_suspicious_permissions()
         for permission in self._permissions:
-            if permission in suspicious_permissions:
+            if permission in self._suspicious_list:
                 flagged_perms.append(permission)
         return flagged_perms
 
@@ -408,14 +388,14 @@ class APKanalyser:
         self._load_apks()  # Load APKs from the directory
 
     @staticmethod
-    def analyse_single_apk(apk_path):
+    def analyse_single_apk(apk_path, suspicious_list: List[str]):
         """
         Standalone function for the ProcessPool to execute.
         This must be outside the class to be 'picklable'.
         """
         try:
-            # We initialize the APK object inside the child process
-            apk_instance = APK(str(apk_path))
+            # We initialize the API object inside the child process, passing it suspicious_list so it can call the identify_suspicious_permissions method without needing to read the JSON file each APK run
+            apk_instance = APK(str(apk_path), suspicious_list)
             metadata = apk_instance.get_metadata()
 
             # The object is destroyed when this process exits
@@ -430,6 +410,15 @@ class APKanalyser:
         Raises:
         Exception: If an APK file cannot be loaded.
         """
+        from utils.config import JSON_PATH
+
+        if JSON_PATH is None:
+            print(
+                "WARNING: No JSON_PATH provided for suspicious permissions. Suspicious permissions will not be identified."
+            )
+
+        # Get the suspicious list once so we don't have to do it each time
+        suspicious_list = self.get_suspicious_permissions(JSON_PATH)  # pyright: ignore
 
         self.results = []
 
@@ -450,7 +439,10 @@ class APKanalyser:
         # Process one by one to keep memory low and allow for OS preemption, but with a timeout
         for apk_path in tqdm.tqdm(apk_files, desc="Analysing"):
             with ProcessPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(self.analyse_single_apk, apk_path)
+                # Pass suspicious_list into analyse_single_apk
+                future = executor.submit(
+                    self.analyse_single_apk, apk_path, suspicious_list
+                )
                 try:
                     # Wait for the result with a strict timeout
                     result = future.result(timeout=timeout)
@@ -590,6 +582,26 @@ class APKanalyser:
                     f"WARNING: Could not read existing CSV to find processed APKs. Error: {e}"
                 )
         return processed_apks
+
+    @staticmethod
+    def get_suspicious_permissions(json_path: str) -> List[str]:
+        """
+        Extracts suspicious permissions from a JSON file.
+
+        Returns:
+            List[str]: List of suspicious permission names.
+        """
+        try:
+            with open(json_path, "r") as file:
+                data = json.load(file)
+                if isinstance(data, list):
+                    return [item["name"] for item in data]
+                else:
+                    print("Invalid format in suspicious_permissions.json.")
+                    return []
+        except FileNotFoundError:
+            print("suspicious_permissions.json file not found.")
+            return []
 
 
 def setup_androguard_logging(verbose=False):
