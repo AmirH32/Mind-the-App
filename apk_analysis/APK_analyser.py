@@ -6,10 +6,10 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import androguard.util
 from loguru import logger
 import tqdm
-import sys
+import argparse
 import csv
 import json
-import gc
+import os
 import re
 from pathlib import Path
 from typing import List
@@ -383,7 +383,7 @@ class APK:
 
 
 class APKanalyser:
-    def __init__(self, apk_directory_path):
+    def __init__(self, apk_directory_path, processed_apks=None):
         """
         APK Analyser constructor. APK analyser extracts static features from APK files in the given directory.
 
@@ -397,6 +397,11 @@ class APKanalyser:
             self.apk_directory_path = apk_directory_path
         else:
             raise ValueError("Provided path is not a directory.")
+
+        if processed_apks is None:
+            self._processed_apks = set()
+        else:
+            self._processed_apks = processed_apks
 
         self.results = []  # List to hold APK objects
 
@@ -420,16 +425,29 @@ class APKanalyser:
 
     def _load_apks(self, timeout=150):
         """
-        Private Method that constructs APK objects for each APK file in the specified directory. It then stores the metadata of each APK in the results list.
+        Private Method that constructs APK objects for each APK file in the specified directory. It then stores the metadata of each APK in the results list. Skips files that have already been processed previously
 
         Raises:
         Exception: If an APK file cannot be loaded.
         """
 
         self.results = []
-        apk_files = list(self.apk_directory_path.glob("*.apk"))
 
-        # Process one by one to keep memory low, but with a timeout
+        all_apk_files = list(self.apk_directory_path.glob("*.apk"))
+
+        apk_files = []
+
+        for apk in all_apk_files:
+            if apk.name not in self._processed_apks:
+                apk_files.append(apk)
+
+        if not apk_files:
+            print("No new APKs to analyse.")
+            return
+
+        print(f"Found {len(apk_files)} new APKs to analyse.")
+
+        # Process one by one to keep memory low and allow for OS preemption, but with a timeout
         for apk_path in tqdm.tqdm(apk_files, desc="Analysing"):
             with ProcessPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(self.analyse_single_apk, apk_path)
@@ -439,11 +457,10 @@ class APKanalyser:
                     self.results.append(result)
                 except TimeoutError:
                     print(f"\n[!] Timeout reached for {apk_path.name}. Skipping...")
-                    # The 'with' block will clean up the hung process here
                 except Exception as e:
                     print(f"\n[!] Error processing {apk_path.name}: {e}")
 
-    def export_features(self, output_csv):
+    def export_features(self, output_csv, append=False):
         """
         Exports extracted features to a CSV file formatted for ML training.
         Includes a 'label' column for your ground truth.
@@ -465,9 +482,18 @@ class APKanalyser:
             "num_suspicious_permissions",
         ] + list(perm_headers)
 
-        with open(output_csv, mode="w", newline="", encoding="utf-8") as csv_file:
+        # Check if the csv file already exists, if it does we don't want to overwrite
+        if os.path.exists(output_csv):
+            mode = "a"  # Append if file exists
+        else:
+            mode = "w"
+
+        with open(output_csv, mode=mode, newline="", encoding="utf-8") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
+
+            # If we are not appending or the file doesn't exist, write the header
+            if not append or mode == "w":
+                writer.writeheader()
 
             for metadata in self.results:
                 if metadata.get("error"):
@@ -480,7 +506,7 @@ class APKanalyser:
                 )
 
                 row = {
-                    "apk_name": metadata.get("apk_name"),
+                    "apk_name": os.path.basename(metadata.get("apk_name")),
                     "package_name": metadata.get("package_name"),
                     "label": "",
                     "risk_score_prediction": "",
@@ -544,6 +570,27 @@ class APKanalyser:
 
         print(f"Total APKs analysed: {len(self.results)}")
 
+    @staticmethod
+    def load_prev_apks(output_csv: str):
+        """If we are appending and the output CSV exists, then we read the existing CSV to find the APKs that are already processed to optimise for time"""
+        processed_apks = set()
+
+        if os.path.exists(output_csv):
+            try:
+                with open(output_csv, "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if "apk_name" in row:
+                            processed_apks.add(row["apk_name"])
+                print(
+                    f"Found {len(processed_apks)} previously analysed APKs in {output_csv}."
+                )
+            except Exception as e:
+                print(
+                    f"Warning: Could not read existing CSV to find processed APKs. Error: {e}"
+                )
+        return processed_apks
+
 
 def setup_androguard_logging(verbose=False):
     """
@@ -561,16 +608,33 @@ def setup_androguard_logging(verbose=False):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python APK_analyser.py <input_apk_directory> <output_csv_file>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Extract static features from APKs for ML analysis."
+    )
+    parser.add_argument("input_dir", type=str, help="Directory containing APK files")
+    parser.add_argument("output_csv", type=str, help="Path to the output CSV file")
+    parser.add_argument(
+        "--overwrite",
+        "-o",
+        action="store_true",
+        help="Overwrite the existing CSV file instead of appending to it",
+    )
+
+    args = parser.parse_args()
 
     # Use it before your analysis
     setup_androguard_logging(verbose=False)
 
-    input_dir = Path(sys.argv[1])
-    output_csv = sys.argv[2]
+    input_dir = Path(args.input_dir)
+    output_csv = args.output_csv
+    append_mode = not args.overwrite
 
-    analyser = APKanalyser(input_dir)
+    # Get processed_apks if we are in append_mode
+    if append_mode:
+        processed_apks = APKanalyser.load_prev_apks(output_csv)
+
+    # 2. Run analysis, passing in the already processed files to skip them
+    analyser = APKanalyser(input_dir, processed_apks=processed_apks)  # pyright: ignore
+
     analyser.output_features()
-    analyser.export_features(output_csv)
+    analyser.export_features(output_csv, append=append_mode)

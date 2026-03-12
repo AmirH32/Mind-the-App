@@ -1,4 +1,4 @@
-from ..base_model import BaseModel
+from .base_model import BaseModel
 
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier

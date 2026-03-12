@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from ..base_model import BaseModel
+from .base_model import BaseModel
 from typing import List
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 

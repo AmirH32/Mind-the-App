@@ -45,7 +45,7 @@ class SeleniumDownloader(BaseDownloader):
 
         return cleaned + ext
 
-    def download_file(self, url: str, timeout: int = 60) -> Optional[str]:
+    def download_file(self, url: str, timeout: int = 180) -> Optional[str]:
         """
         Navigates to the URL bypassing Cloudflare and waits for Chrome to finish the download.
         """
@@ -84,7 +84,7 @@ class SeleniumDownloader(BaseDownloader):
             original_path = os.path.join(self.download_dir, downloaded_file)
             final_path = os.path.join(self.download_dir, clean_name)
 
-            os.rename(original_path, final_path)
+            os.rename(original_path, final_pa300)
 
             print(f"Successfully downloaded: {clean_name}")
             return final_path

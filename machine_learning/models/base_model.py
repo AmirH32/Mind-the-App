@@ -32,7 +32,7 @@ class ModelConfig:
     name: str
     param_space: Dict[str, List]
     pipeline: Optional[Pipeline] = None
-    cv_folds: int = 5
+    cv_folds: int = 3  # Change to 5 when I have more data
     metric: str = "f1"
 
 

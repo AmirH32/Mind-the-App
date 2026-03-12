@@ -1,7 +1,7 @@
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 
-from ..base_model import BaseModel
+from .base_model import BaseModel
 
 
 class SVMModel(BaseModel):

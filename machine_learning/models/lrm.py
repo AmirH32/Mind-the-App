@@ -1,4 +1,4 @@
-from ..base_model import BaseModel
+from .base_model import BaseModel
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline

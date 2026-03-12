@@ -1,7 +1,7 @@
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 
-from ..base_model import BaseModel
+from .base_model import BaseModel
 
 
 class GradientBoostingModel(BaseModel):

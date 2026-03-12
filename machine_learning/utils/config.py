@@ -1,8 +1,11 @@
-from ..base_model import ModelConfig
+from models.base_model import ModelConfig
+from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 CSV_FILE = os.getenv("CSV_FILE")
-MODEL_FILE = os.getenv("MODEL_FILE")
+OUTPUT_DIR = os.getenv("OUTPUT_DIR")
 
 # Model configurations with hyperparameter spaces
 MODEL_CONFIGS = {
@@ -19,9 +22,10 @@ MODEL_CONFIGS = {
         name="Logistic Regression",
         param_space={
             "classifier__C": [0.1, 1.0, 10.0, 100.0],
-            "classifier__penalty": ["l1", "l2"],
-            "classifier__solver": ["liblinear", "saga"],
-            "classifier__max_iter": [500, 1000, 2000],
+            "classifier__solver": ["saga"],
+            "classifier__l1_ratio": [0.0, 1.0],
+            "classifier__penalty": ["elasticnet"],
+            "classifier__max_iter": [1000, 2000, 5000],
         },
     ),
     "svm": ModelConfig(
