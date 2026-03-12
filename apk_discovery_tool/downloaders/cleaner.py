@@ -2,6 +2,7 @@ import zipfile
 import os
 import shutil
 from typing import Optional
+import hashlib
 
 
 class Cleaner:
@@ -18,6 +19,16 @@ class Cleaner:
                 return "base.apk" in zf.namelist()
         except:
             return False
+
+    @staticmethod
+    def get_hash(file_path: str):
+        """Returns the SHA-256 hash"""
+        sha256_hash = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            # update hash in chunks to prevent memory crashing
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
 
     @staticmethod
     def _extract_base_apk(apkm_path: str, target_dir: str) -> Optional[str]:
@@ -81,6 +92,7 @@ class Cleaner:
         apk_files = []
         apkm_files = []
         other_files = []
+        seen_hashes = set()
 
         # First pass scans and categorises all files
         for filename in os.listdir(directory_path):
@@ -88,6 +100,14 @@ class Cleaner:
 
             if os.path.isdir(file_path):
                 continue  # Skip subdirectories
+
+            hash = Cleaner.get_hash(file_path)
+            if hash in seen_hashes:
+                print(f"Deleting duplicate found: {filename}")
+                other_files.append(file_path)
+                continue
+
+            seen_hashes.add(hash)
 
             if filename.endswith(".apk"):
                 # Ensure the file is not misnamed APKM
