@@ -13,6 +13,11 @@ import os
 import re
 from pathlib import Path
 from typing import List
+from utils.config import (
+    APK_DIR as CFG_APK_DIR,
+    OUTPUT_CSV as CFG_OUTPUT_CSV,
+    JSON_PATH as CFG_JSON_PATH,
+)
 
 
 class APK:
@@ -363,7 +368,7 @@ class APK:
 
 
 class APKanalyser:
-    def __init__(self, apk_directory_path, processed_apks=None):
+    def __init__(self, apk_directory_path, processed_apks=None, json_path=None):
         """
         APK Analyser constructor. APK analyser extracts static features from APK files in the given directory.
 
@@ -382,6 +387,12 @@ class APKanalyser:
             self._processed_apks = set()
         else:
             self._processed_apks = processed_apks
+
+        if self._json_path is None:
+            print(
+                "WARNING: No JSON_PATH provided for suspicious permissions. Suspicious permissions will not be identified."
+            )
+            self._json_path = json_path
 
         self.results = []  # List to hold APK objects
 
@@ -410,15 +421,8 @@ class APKanalyser:
         Raises:
         Exception: If an APK file cannot be loaded.
         """
-        from utils.config import JSON_PATH
-
-        if JSON_PATH is None:
-            print(
-                "WARNING: No JSON_PATH provided for suspicious permissions. Suspicious permissions will not be identified."
-            )
-
         # Get the suspicious list once so we don't have to do it each time
-        suspicious_list = self.get_suspicious_permissions(JSON_PATH)  # pyright: ignore
+        suspicious_list = self.get_suspicious_permissions(self._json_path)  # pyright: ignore
 
         self.results = []
 
@@ -623,8 +627,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Extract static features from APKs for ML analysis."
     )
-    parser.add_argument("input_dir", type=str, help="Directory containing APK files")
-    parser.add_argument("output_csv", type=str, help="Path to the output CSV file")
+    parser.add_argument(
+        "apk_dir",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Directory containing APK files",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Path to the output CSV file",
+    )
+    parser.add_argument(
+        "json_path",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Path to the suspicious permissions JSON file",
+    )
     parser.add_argument(
         "--overwrite",
         "-o",
@@ -634,19 +657,32 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Use it before your analysis
     setup_androguard_logging(verbose=False)
 
-    input_dir = Path(args.input_dir)
+    apk_dir = Path(args.apk_dir)
     output_csv = args.output_csv
     append_mode = not args.overwrite
+    json_path = args.json_path
+
+    if apk_dir:
+        APK_DIR = apk_dir
+    elif isinstance(CFG_APK_DIR, str):
+        APK_DIR = Path(CFG_APK_DIR)
+    else:
+        exit(
+            "No APK directory provided. Please provide an APK directory as an argument or set it in the config."
+        )
+
+    OUTPUT_CSV = output_csv if output_csv else CFG_OUTPUT_CSV
+    JSON_PATH = json_path if json_path else CFG_JSON_PATH
 
     # Get processed_apks if we are in append_mode
+    processed_apks = set()
+
     if append_mode:
         processed_apks = APKanalyser.load_prev_apks(output_csv)
 
-    # 2. Run analysis, passing in the already processed files to skip them
-    analyser = APKanalyser(input_dir, processed_apks=processed_apks)  # pyright: ignore
+    analyser = APKanalyser(APK_DIR, processed_apks=processed_apks, json_path=JSON_PATH)
 
     analyser.output_features()
-    analyser.export_features(output_csv, append=append_mode)
+    analyser.export_features(OUTPUT_CSV, append=append_mode)
