@@ -36,7 +36,7 @@ def get_suspicious_permissions() -> List[str]:
 
 
 class APK:
-    def __init__(self, apk_path: str):
+    def __init__(self, apk_path: str, suspicious_list: List[str]):
         """
         APK wrapper class to store the metadata from static APK analysis
 
@@ -587,7 +587,7 @@ class APKanalyser:
                 )
             except Exception as e:
                 print(
-                    f"Warning: Could not read existing CSV to find processed APKs. Error: {e}"
+                    f"WARNING: Could not read existing CSV to find processed APKs. Error: {e}"
                 )
         return processed_apks
 
