@@ -388,11 +388,11 @@ class APKanalyser:
         else:
             self._processed_apks = processed_apks
 
-        if self._json_path is None:
+        if json_path is None:
             print(
                 "WARNING: No JSON_PATH provided for suspicious permissions. Suspicious permissions will not be identified."
             )
-            self._json_path = json_path
+        self._json_path = json_path
 
         self.results = []  # List to hold APK objects
 
@@ -461,7 +461,7 @@ class APKanalyser:
         Exports extracted features to a CSV file formatted for ML training.
         Includes a 'label' column for your ground truth.
         """
-        critical_permissions = get_suspicious_permissions()
+        critical_permissions = self.get_suspicious_permissions(self._json_path)  # pyright: ignore
         perm_headers = [f"perm_{p.split('.')[-1]}" for p in critical_permissions]
 
         fieldnames = [
@@ -567,7 +567,7 @@ class APKanalyser:
         print(f"Total APKs analysed: {len(self.results)}")
 
     @staticmethod
-    def load_prev_apks(output_csv: str):
+    def load_prev_apks(output_csv: Path):
         """If we are appending and the output CSV exists, then we read the existing CSV to find the APKs that are already processed to optimise for time"""
         processed_apks = set()
 
@@ -588,7 +588,7 @@ class APKanalyser:
         return processed_apks
 
     @staticmethod
-    def get_suspicious_permissions(json_path: str) -> List[str]:
+    def get_suspicious_permissions(json_path: Path) -> List[str]:
         """
         Extracts suspicious permissions from a JSON file.
 
@@ -621,6 +621,17 @@ def setup_androguard_logging(verbose=False):
 
     else:
         logger.disable("androguard")
+
+
+def select_constant(arg_value, config_value, name) -> str:
+    if isinstance(arg_value, str) and arg_value.strip():
+        return arg_value
+    elif isinstance(config_value, str) and config_value.strip():
+        return config_value
+    else:
+        raise ValueError(
+            f"{name} must be provided either as a command-line argument or in the config file."
+        )
 
 
 if __name__ == "__main__":
@@ -659,28 +670,22 @@ if __name__ == "__main__":
 
     setup_androguard_logging(verbose=False)
 
-    apk_dir = Path(args.apk_dir)
+    apk_dir = args.apk_dir
     output_csv = args.output_csv
     append_mode = not args.overwrite
     json_path = args.json_path
 
-    if apk_dir:
-        APK_DIR = apk_dir
-    elif isinstance(CFG_APK_DIR, str):
-        APK_DIR = Path(CFG_APK_DIR)
-    else:
-        exit(
-            "No APK directory provided. Please provide an APK directory as an argument or set it in the config."
-        )
-
-    OUTPUT_CSV = output_csv if output_csv else CFG_OUTPUT_CSV
-    JSON_PATH = json_path if json_path else CFG_JSON_PATH
+    APK_DIR = Path(select_constant(apk_dir, CFG_APK_DIR, "APK directory"))
+    OUTPUT_CSV = Path(select_constant(output_csv, CFG_OUTPUT_CSV, "output CSV"))
+    JSON_PATH = Path(
+        select_constant(json_path, CFG_JSON_PATH, "JSON path for sus perms")
+    )
 
     # Get processed_apks if we are in append_mode
     processed_apks = set()
 
     if append_mode:
-        processed_apks = APKanalyser.load_prev_apks(output_csv)
+        processed_apks = APKanalyser.load_prev_apks(OUTPUT_CSV)
 
     analyser = APKanalyser(APK_DIR, processed_apks=processed_apks, json_path=JSON_PATH)
 
