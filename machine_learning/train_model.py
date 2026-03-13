@@ -6,7 +6,7 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import List, Tuple, Type, Dict
+from typing import List, Tuple, Type, Dict, Optional
 
 from models.base_model import BaseModel
 from models.grm import GradientBoostingModel
@@ -288,11 +288,33 @@ class APKMalwareDetector:
             joblib.dump(model, model_path)
             print(f"Saved {name} model to: {model_path}")
 
+    def load_models(self, model_types: List[str], use_cons: bool):
+        """Load the pre-trained models from the directory"""
+        for name in model_types:
+            # Find the model path name
+            model_path = os.path.join(self.output_dir, f"{name}_model.pkl")
+
+            # If model file exists then we load it
+            if os.path.exists(model_path):
+                self.trained_models[name] = joblib.load(model_path)
+                print(f"Loaded {name} model.")
+            else:
+                print(f"Model file not found: {model_path}")
+
+        if use_cons:
+            cons_path = os.path.join(self.output_dir, "consensus_model.pkl")
+            if os.path.exists(cons_path):
+                self.trained_models["consensus"] = joblib.load(cons_path)
+                print("Loaded consensus model.")
+            else:
+                print(f"Consensus model file not found: {cons_path}")
+
     def run(
         self,
         model_types: List[str],
         use_consensus: bool = False,
         all_models: bool = False,
+        load: bool = False,
     ):
         """Main execution pipeline"""
         print("APK MALWARE DETECTION - ML PIPELINE")
@@ -301,37 +323,44 @@ class APKMalwareDetector:
         X, y = self.load_and_prepare_data()
         self.split_data(X, y)
 
-        # Train the models
-        if use_consensus and len(model_types) > 1:
-            # Iterate through each model type to show which we are using
-            print("\nTraining consensus model with:")
-            for model_t in model_types:
-                print(f"\n- {model_t}")
-
-            self.train_consensus(model_types)
-
+        if load:
+            print(f"\nLoading models from {self.output_dir}...")
+            self.load_models(model_types, use_consensus)
         else:
-            # Can't do consensus with only one model
-            print(f"\nTraining single model: {model_types[0]}")
-            self.train_single_model(model_types[0])
+            # Train the models
+            if use_consensus and len(model_types) > 1:
+                # Iterate through each model type to show which we are using
+                print("\nTraining consensus model with:")
+                for model_t in model_types:
+                    print(f"\n- {model_t}")
 
-        if all_models:
-            print("\nTraining multiple models:")
-            for model_type in model_types:
-                print(f"\n- {model_type}")
-                self.train_single_model(model_type)
+                self.train_consensus(model_types)
 
-        # Evaluate
-        results_df = self.evaluate_all_models()
+            else:
+                # Can't do consensus with only one model
+                print(f"\nTraining single model: {model_types[0]}")
+                self.train_single_model(model_types[0])
 
-        # Plot the results
-        self.plot_comparison(results_df)
-        self.plot_feature_importance()
+            if all_models:
+                print("\nTraining multiple models:")
+                for model_type in model_types:
+                    print(f"\n- {model_type}")
+                    self.train_single_model(model_type)
 
-        # Save the models
-        self.save_models()
+            # Save the models
+            self.save_models()
 
-        print("TRAINING COMPLETE, PLOTS and MODELS SAVED")
+        if self.trained_models:
+            # Evaluate
+            results_df = self.evaluate_all_models()
+
+            # Plot the results
+            self.plot_comparison(results_df)
+            self.plot_feature_importance()
+
+            print("TRAINING COMPLETE, PLOTS and MODELS SAVED")
+        else:
+            print("No models loaded/trained.")
 
 
 def main():
@@ -345,6 +374,7 @@ def main():
         python -m train_model --models random_forest logistic svm  --consensus    # Multiple models
         python -m train_model -a --consensus  # Train all models with consensus
         python -m train_model --models rf logistic --output my_models  # Custom output dir
+        python -m train_model -l --models svm logistic --consensus # Loads pre-trained SVM and logistic model from directory as well as their combined consensus model
         """,
     )
 
@@ -372,6 +402,13 @@ def main():
         help="Use consensus voting with trained models",
     )
 
+    parser.add_argument(
+        "--load",
+        "-l",
+        action="store_true",
+        help="Directory to load pre-trained models from",
+    )
+
     args = parser.parse_args()
 
     check_constants()
@@ -387,7 +424,7 @@ def main():
         model_types = args.models
 
     # Create and run detector
-    detector = APKMalwareDetector(csv_path=CSV_FILE, output_dir=OUTPUT_DIR)
+    detector = APKMalwareDetector(csv_path=CSV_FILE, output_dir=OUTPUT_DIR)  # pyright: ignore
 
     if args.all_models:
         model_types = ["random_forest", "logistic", "svm", "gradient_boosting"]
@@ -396,6 +433,7 @@ def main():
         model_types=model_types,
         use_consensus=args.consensus,
         all_models=args.all_models,
+        load=args.load,
     )
 
 

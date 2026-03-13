@@ -181,16 +181,25 @@ class BaseModel(ABC):
             pd.DataFrame: DataFrame of features and numerical importance
         """
         if self.model:
-            if hasattr(self.model, "feature_importances_"):
-                # For tree-based models
-                importances = self.model.feature_importances_
-            elif hasattr(self.model, "coef_"):
-                # For linear models look at the magnitude of the coefficients
-                importances = np.abs(self.model.coef_[0])
+            # Extract the actual classifier from the pipeline
+            try:
+                classifier = self.model.named_steps["classifier"]
+            except:
+                print(
+                    f"Warning: No classifier step found in pipeline in {self.config.name}"
+                )
+                return None
+
+            if hasattr(classifier, "feature_importances_"):
+                # For tree-based models (Random Forest, Gradient Boosting)
+                importances = classifier.feature_importances_
+            elif hasattr(classifier, "coef_"):
+                # For linear models (Logistic Regression, SVM) look at the magnitude of the coefficients
+                importances = np.abs(classifier.coef_[0])
             else:
                 return None
 
-                # Returns data frame with feature against importance in descending order (highest to lowest)
+            # Returns data frame with feature against importance in descending order
             return pd.DataFrame(
                 {"feature": feature_names, "importance": importances}
             ).sort_values("importance", ascending=False)

@@ -441,8 +441,8 @@ class APKanalyser:
         print(f"Found {len(apk_files)} new APKs to analyse.")
 
         # Process one by one to keep memory low and allow for OS preemption, but with a timeout
-        for apk_path in tqdm.tqdm(apk_files, desc="Analysing"):
-            with ProcessPoolExecutor(max_workers=1) as executor:
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            for apk_path in tqdm.tqdm(apk_files, desc="Analysing"):
                 # Pass suspicious_list into analyse_single_apk
                 future = executor.submit(
                     self.analyse_single_apk, apk_path, suspicious_list
@@ -479,7 +479,7 @@ class APKanalyser:
         ] + list(perm_headers)
 
         # Check if the csv file already exists, if it does we don't want to overwrite
-        if os.path.exists(output_csv):
+        if os.path.exists(output_csv) and append:
             mode = "a"  # Append if file exists
         else:
             mode = "w"
@@ -605,6 +605,10 @@ class APKanalyser:
                     return []
         except FileNotFoundError:
             print("suspicious_permissions.json file not found.")
+            return []
+        except json.JSONDecodeError:
+            # If the JSON is invalid or empty catch the error
+            print(f"ERROR: {json_path.name} contains invalid JSON.")
             return []
 
 
