@@ -89,3 +89,98 @@ def _root_domain(hostname: str) -> str:
         return ".".join(parts[-2:])
     else:
         return hostname
+
+
+# these are the filesystem paths we care about and want to see if they are aeccessed, grouped by category. I checked these against a few real devices to make sure they were right
+# the double entries (data/data vs data/user/0) are becuase different android versions put things in different places (/data/data is the legacy version in older devices, 0 represents the primary owner)
+SENSITIVE_FS = {
+    "contacts": [
+        "/data/data/com.android.providers.contacts",
+        "/data/user/0/com.android.providers.contacts",
+    ],
+    "sms": [
+        "/data/data/com.android.providers.telephony",
+        "/data/user/0/com.android.providers.telephony",
+    ],
+    "call_log": [
+        "/data/user/0/com.android.providers.contacts/databases/calllog",
+        "/data/data/com.android.providers.contacts/databases/calllog",
+    ],
+    "location_db": [
+        "/data/data/com.google.android.gms",
+        "/data/data/com.google.android.location",
+    ],
+    "external": ["/sdcard", "/storage/emulated", "/mnt/sdcard"],
+    "camera_dev": ["/dev/video", "/dev/camera"],
+    "mic_dev": ["/dev/snd", "/dev/audio"],
+    "other_apps": [
+        "/data/data/com.whatsapp",
+        "/data/data/org.telegram",
+        "/data/data/com.facebook",
+    ],
+}
+
+# logcat signals to look for — using tag+substring pairs for each sensitive API tags are better than substrings when possible because raw substring matching on logcat output produces a lot of noise
+# The tag gives us the system service or class and the substring is the method or data that is being used
+# We look at location tracking, accessibility and keylogging, telephony to identify the device, package enumeration to scan the device for apps, screen capture, clipboard to access clipboard, microphone and camera, sending/reading SMS messages, reading contacts, account manager is a gatekeeper for sensitive data,
+# On newer android versions it's unlikely that an API will be used to read SMS but isntead the Content resolver will be queried to look at the SMS database to read SMS messages
+LOGCAT_APIS = {
+    "location": {
+        "tags": ["LocationManager", "LocationManagerService", "FusedLocation"],
+        "subs": ["getLastKnownLocation", "requestLocationUpdates", "onLocationChanged"],
+    },
+    "telephony": {
+        "tags": ["TelephonyManager", "PhoneSubInfo"],
+        "subs": ["getDeviceId", "getImei", "getSubscriberId", "getLine1Number"],
+    },
+    "sms_send": {
+        "tags": ["SmsManager", "SMSDispatcher"],
+        "subs": ["sendTextMessage", "sendMultipartTextMessage"],
+    },
+    "sms_read": {
+        "tags": ["SmsProvider", "TelephonyProvider", "MmsSmsDatabaseHelper"],
+        "subs": [
+            "content://sms/inbox",
+            "content://sms/sent",
+            "content://sms/conversations",
+            "content://mms-sms/",
+            "SmsMessage.createFromPdu",
+        ],
+    },
+    "camera": {
+        "tags": ["CameraService", "CameraManager", "Camera2"],
+        "subs": ["CameraDevice.StateCallback", "Camera.open("],
+    },
+    "microphone": {
+        "tags": ["MediaRecorder", "AudioRecord"],
+        "subs": ["AudioRecord(", "startRecording(", "setAudioSource"],
+    },
+    "contacts_read": {
+        "tags": ["ContactsProvider2"],
+        "subs": ["ContactsContract", "content://com.android.contacts"],
+    },
+    "clipboard": {
+        "tags": ["ClipboardManager"],
+        "subs": ["getPrimaryClip", "hasPrimaryClip"],
+    },
+    "pkg_enum": {
+        "tags": ["PackageManager"],
+        "subs": [
+            "getInstalledPackages",
+            "getInstalledApplications",
+            "queryIntentActivities",
+        ],
+    },
+    "accessibility": {
+        "tags": ["AccessibilityService", "AccessibilityManager"],
+        "subs": ["BIND_ACCESSIBILITY_SERVICE", "onAccessibilityEvent"],
+    },
+    "screen_capture": {
+        "tags": ["MediaProjection"],
+        "subs": ["MediaProjectionManager", "createVirtualDisplay"],
+    },
+    "account_mgr": {
+        "tags": ["AccountManager"],
+        "subs": ["getAccountsByType", "getAuthToken"],
+    },
+}
