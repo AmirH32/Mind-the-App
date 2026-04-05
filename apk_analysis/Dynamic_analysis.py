@@ -2,7 +2,8 @@
 #   adb push tcpdump /data/local/tmp/tcpdump
 #   adb shell chmod +x /data/local/tmp/tcpdump
 
-import urllib
+
+import urllib.request
 
 
 def load_domain_set(url: str) -> set[str]:
