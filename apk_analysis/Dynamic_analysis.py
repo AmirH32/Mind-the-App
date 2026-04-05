@@ -4,6 +4,7 @@
 
 
 import urllib.request
+import ipaddress
 
 
 def load_domain_set(url: str) -> set[str]:
@@ -48,13 +49,22 @@ SUSPICIOUS_PORTS = {
 }
 
 # private IP ranges as (network, mask) tuples — used to filter out local traffic that is not suspicious
+# Used ipaddress library as it is more readable
 _PRIVATE_RANGES = [
-    (0x7F000000, 0xFF000000),  # 127/8 loopback - device talking to itself
-    (
-        0x0A000000,
-        0xFF000000,
-    ),  # 10/8 private network range used by emulator for internal comms
-    (0xAC100000, 0xFFF00000),  # 172.16/12 Private range
-    (0xC0A80000, 0xFFFF0000),  # 192.168/16 Wifi/local home range (192.168)
-    (0xA9FE0000, 0xFFFF0000),  # 169.254/16 link-local when device can't find DHCP
+    ipaddress.IPv4Network("127.0.0.0/8"),  # Loopback
+    ipaddress.IPv4Network("10.0.0.0/8"),  # Private/Emulator
+    ipaddress.IPv4Network("172.16.0.0/12"),  # Private
+    ipaddress.IPv4Network("192.168.0.0/16"),  # Local Wi-Fi
+    ipaddress.IPv4Network("169.254.0.0/16"),  # Link-local
 ]
+
+
+def _is_private(ip_bytes: bytes) -> bool:
+    # Convert bytes directly to an IP object
+    try:
+        ip = ipaddress.IPv4Address(ip_bytes)
+    except ValueError:
+        return False  # Handle malformed data
+
+    # Check if the IP is in any of your defined networks
+    return any(ip in net for net in _PRIVATE_NETWORKS)
