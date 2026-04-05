@@ -8,8 +8,11 @@ import ipaddress
 
 
 def load_domain_set(url: str) -> set[str]:
+    # open the url and read the bytes, decode them and then split the strings on the new lines
     with urllib.request.urlopen(url, timeout=10) as r:
-        lines = r.read().decode().splitlines()
+        byte = r.read()
+        string_blob = byte.decode()
+        lines = string_blob.splitlines()
 
     domain_set = set()
 
@@ -68,3 +71,21 @@ def _is_private(ip_bytes: bytes) -> bool:
 
     # Check if the IP is in any of your defined networks
     return any(ip in net for net in _PRIVATE_NETWORKS)
+
+
+def _root_domain(hostname: str) -> str:
+    # strips subdomains so e.g. "foo.bar.duckdns.org" → "duckdns.org"
+    # this is so we can match against our domain lists properly
+
+    # r strip takes removes the trailing periods at the end
+    stripped = hostname.rstrip(".")
+
+    # this splits into parts on the periods
+    parts = stripped.split(".")
+
+    # If there is more than one part i.e no periods then we just return the hostname
+    if len(parts) >= 2:
+        # If more than 2 parts we join the last two parts together and return that since it is the second-level domain and top-level domain
+        return ".".join(parts[-2:])
+    else:
+        return hostname
