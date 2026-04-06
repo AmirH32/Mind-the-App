@@ -70,7 +70,7 @@ def _is_private(ip_bytes: bytes) -> bool:
         return False  # Handle malformed data
 
     # Check if the IP is in any of your defined networks
-    return any(ip in net for net in _PRIVATE_NETWORKS)
+    return any(ip in net for net in _PRIVATE_RANGES)
 
 
 def _root_domain(hostname: str) -> str:
