@@ -8,11 +8,14 @@ import ipaddress
 from pathlib import Path
 import dpkt
 import socket
+import time
+import subprocess
+from typing import Optional
 
 
 def load_domain_set(url: str) -> set[str]:
     # open the url and read the bytes, decode them and then split the strings on the new lines
-    with urllib.request.urlopen(url, timeout_dict=10) as r:
+    with urllib.request.urlopen(url, timeout=10) as r:
         byte = r.read()
         string_blob = byte.decode()
         lines = string_blob.splitlines()
@@ -419,3 +422,102 @@ def _categorise_paths(open_paths: set[str]) -> dict[str, int]:
     # Also get the number of sensitive categories hit by unique API calls and save this as a feature
     result["dyn_fs_sensitive_category_count"] = triggered_count
     return result
+
+
+class FilesystemAnalyser:
+    """
+    Takes snapshots of /proc/<pid>/fd at three points during the run:
+    - pre: right after launch before any monkey events
+    - during: while monkey is interacting with the app
+    - post: idle period after monkey stops
+
+    A legit parental control app should only touch contacts/location
+    when the user is actively using it, a stalkerware app will do it
+    in the background. We look for any feature and feed it to ML models to find correlations across APKs
+    """
+
+    # all the feature column names this class produces
+    KEYS = (
+        [f"dyn_fs_{c}" for c in SENSITIVE_FS]
+        + ["dyn_fs_sensitive_category_count"]
+        + [
+            "dyn_fs_preinteraction_access",
+            "dyn_fs_background_access",
+            "dyn_fs_silent_harvest",  # silent = pre or post access but NOT during interaction
+        ]
+    )
+
+    def analyse_phased(self, pkg: str, monkey_fn, idle_secs=12) -> dict:
+        """
+        Does the three-phase filesystem snapshot. monkey_fn is a callable that triggers the monkey tool so we can take snapshots before and after it runs.
+        """
+        # Intialise the output dictionary
+        out_dict = {}
+        for k in self.KEYS:
+            out_dict[k] = 0
+
+        # get the process ID of the application
+        pid = _get_pid(pkg)
+        if not pid:
+            print(f"[fs] cant find pid for {pkg}")
+            return out_dict
+
+        # Pre-snapshot before any user interaction
+        pre_paths = _snapshot_open_files(pid)
+        pre_cats = _categorise_paths(pre_paths)
+
+        # run monkey to simulate user interaction, then snapshot mid-way through
+        monkey_fn()
+
+        # pid might change if the app crashed and restarted during monkey
+        new_pid = _get_pid(pkg)
+        if new_pid:
+            pid = new_pid
+        # else keep the old pid and hope for the best
+
+        # During snapshot, during interaction
+        during_paths = _snapshot_open_files(pid)
+        during_cats = _categorise_paths(during_paths)
+
+        # Post-snapshot wait a bit and snapshot again. Background harvest shows up here
+        time.sleep(idle_secs)
+
+        # Again update if crashed
+        new_pid = _get_pid(pkg)
+        if new_pid:
+            pid = new_pid
+
+        post_paths = _snapshot_open_files(pid)
+        post_cats = _categorise_paths(post_paths)
+
+        # for the base category flags we combine all three phases
+        all_paths = pre_paths.union(during_paths, post_paths)
+        # Then categorise the paths to find which sensitive categories they used
+        combined_cats = _categorise_paths(all_paths)
+        out_dict.update(combined_cats)
+
+        # was anything sensitive open before the user touched the app?
+        pre_triggered = pre_cats["dyn_fs_sensitive_category_count"] > 0
+
+        # which categories were open in post but NOT during interaction?
+        # this is the "silent harvest" signal
+        background_only = set()
+        for cat in SENSITIVE_FS:
+            key = f"dyn_fs_{cat}"
+            post_hit = post_cats.get(key, 0)
+            during_hit = during_cats.get(key, 0)
+            if post_hit and not during_hit:
+                # Find categories that were accessed not during use but outside of use
+                background_only.add(cat)
+
+        if len(background_only) > 0:
+            background_detected = True
+        else:
+            background_detected = False
+
+        out_dict["dyn_fs_preinteraction_access"] = int(pre_triggered)
+        out_dict["dyn_fs_background_access"] = int(background_detected)
+        # silent harvest = sensitive access without user interaction causing it
+        out_dict["dyn_fs_silent_harvest"] = int(pre_triggered or background_detected)
+
+        return out_dict
