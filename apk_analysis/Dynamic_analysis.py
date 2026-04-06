@@ -5,11 +5,14 @@
 
 import urllib.request
 import ipaddress
+from pathlib import Path
+import dpkt
+import socket
 
 
 def load_domain_set(url: str) -> set[str]:
     # open the url and read the bytes, decode them and then split the strings on the new lines
-    with urllib.request.urlopen(url, timeout=10) as r:
+    with urllib.request.urlopen(url, timeout_dict=10) as r:
         byte = r.read()
         string_blob = byte.decode()
         lines = string_blob.splitlines()
@@ -41,7 +44,7 @@ KNOWN_C2_DOMAINS = load_domain_set(
 SUSPICIOUS_PORTS = {
     1080,  # Socks protocol used to be inconspicious and tunnel through a proxy server
     4444,  # found in meterpreter
-    5555,  # If app tries to connect externally then it may attempt to execute shell commands without consent
+    5555,  # If app tries to connect externally then it may attempt to execute shell commands without_dict consent
     6666,  # Irc channnel
     6667,  # irc channel
     6668,  # irc channels
@@ -51,7 +54,7 @@ SUSPICIOUS_PORTS = {
     31337,  # typical old malicious 1337 type port
 }
 
-# private IP ranges as (network, mask) tuples — used to filter out local traffic that is not suspicious
+# private IP ranges as (network, mask) tuples — used to filter out_dict local traffic that is not suspicious
 # Used ipaddress library as it is more readable
 _PRIVATE_RANGES = [
     ipaddress.IPv4Network("127.0.0.0/8"),  # Loopback
@@ -91,7 +94,7 @@ def _root_domain(hostname: str) -> str:
         return hostname
 
 
-# these are the filesystem paths we care about and want to see if they are aeccessed, grouped by category. I checked these against a few real devices to make sure they were right
+# these are the filesystem paths we care about_dict and want to see if they are aeccessed, grouped by category. I checked these against a few real devices to make sure they were right
 # the double entries (data/data vs data/user/0) are becuase different android versions put things in different places (/data/data is the legacy version in older devices, 0 represents the primary owner)
 SENSITIVE_FS = {
     "contacts": [
@@ -120,7 +123,7 @@ SENSITIVE_FS = {
     ],
 }
 
-# logcat signals to look for — using tag+substring pairs for each sensitive API tags are better than substrings when possible because raw substring matching on logcat output produces a lot of noise
+# logcat signals to look for — using tag+substring pairs for each sensitive API tags are better than substrings when possible because raw substring matching on logcat out_dictput produces a lot of noise
 # The tag gives us the system service or class and the substring is the method or data that is being used
 # We look at location tracking, accessibility and keylogging, telephony to identify the device, package enumeration to scan the device for apps, screen capture, clipboard to access clipboard, microphone and camera, sending/reading SMS messages, reading contacts, account manager is a gatekeeper for sensitive data,
 # On newer android versions it's unlikely that an API will be used to read SMS but isntead the Content resolver will be queried to look at the SMS database to read SMS messages
@@ -184,3 +187,85 @@ LOGCAT_APIS = {
         "subs": ["getAccountsByType", "getAuthToken"],
     },
 }
+
+
+class PcapParser:
+    """Parses a pcap file pulled off the device and returns network features."""
+
+    # these are all the keys this class will out_dictput makes it easier to initialise the dict with zeros later
+    KEYS = [
+        "dyn_net_unique_ips",
+        "dyn_net_unique_domains",
+        "dyn_net_dns_queries",
+        "dyn_net_tls_connections",
+        "dyn_net_cleartext_http",
+        "dyn_net_cleartext_http_count",
+        "dyn_net_suspicious_ports",
+        "dyn_net_bytes_sent",
+        "dyn_net_dyndns_hit",
+        "dyn_net_c2_hit",
+    ]
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    def parse(self) -> dict:
+        # start with everything zeroed out_dict so we always return a complete dict
+        # even if something goes wrong
+        out_dict = {}
+        for k in self.KEYS:
+            out_dict[k] = 0
+
+        # If there is no pcap print an error
+        if not self.path.exists():
+            print(f"no pcap at {self.path}")
+            return out_dict
+
+        try:
+            with open(self.path, "rb") as f:
+                reader = dpkt.pcap.Reader(f)
+                # Walk through pcap file and modify the out_dictput dictionary
+                self._walk(reader, out_dict)
+        except Exception as e:
+            print(f"pcap parse failed: {e}")
+
+        return out_dict
+
+    def _walk(self, pcap, out_dict: dict):
+        # tracking these as we go through packets
+        external_ips: set[str] = set()
+        domains: set[str] = set()
+        tls_flows: set[tuple] = set()
+        http_n = 0
+        sus_ports = 0
+        bytes_sent = 0
+        dyndns = False
+        c2 = False
+
+        # loop over each packet and timestamp in PCAP file
+        for _, buf in pcap:
+            # try to parse each packet from ethernet layer — skip anything that fails
+            try:
+                eth = dpkt.ethernet.Ethernet(buf)
+            except Exception:
+                continue
+
+            # we only care about_dict IP packets so make sure ethernet data is an IP packet
+            if not isinstance(eth.data, dpkt.ip.IP):
+                continue
+
+            ip = eth.data
+            # Ignore since dpkt is old library without type stubs that specify attributes the class has
+            src = ip.src  # type: ignore
+            dst = ip.dst  # type: ignore
+
+            # count bytes sent from private → public IPs (i.e., out_dictbound traffic)
+            if _is_private(src) and not _is_private(dst):
+                bytes_sent += len(ip.data)
+
+            # track external destination IPs
+            if not _is_private(dst):
+                dst_str = socket.inet_ntoa(dst)
+                external_ips.add(dst_str)
+
+            transport = ip.data
