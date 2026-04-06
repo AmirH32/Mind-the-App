@@ -65,9 +65,6 @@ _PRIVATE_RANGES = [
 ]
 
 
-### Helper functions
-
-
 def _is_private(ip_bytes: bytes) -> bool:
     # Convert bytes directly to an IP object
     try:
@@ -354,68 +351,9 @@ def _adb(cmd: list, timeout=10) -> str:
             errors="ignore",
             timeout=timeout,
         )
-        # Returns the output from the command
         return result.stdout
 
     except Exception:
-        # idk if swallowing all exceptions here is best practice but return empty string back
+        # idk if swallowing all exceptions here is best practice but it makes
+        # the rest of the code much simpler — we just get empty string back
         return ""
-
-
-def _get_pid(pkg: str) -> Optional[str]:
-    # pidof can return multiple pids if theres multiple processes for the same package, returns the pid table
-    raw_output = _adb(["shell", "pidof", pkg], timeout=5)
-
-    stripped = raw_output.strip()
-    parts = stripped.split()
-
-    # split the processes into parts, the first pid is the main process
-    if parts and parts[0].isdigit():
-        return parts[0]
-    return None
-
-
-def _snapshot_open_files(pid: str) -> set[str]:
-    """Reads /proc/<pid>/fd to see what files the process currently has open.
-    This works without root on the Android Virtual Device which is handy."""
-    # Dynamically scan memory for files currently open
-    raw = _adb(["shell", f"ls -la /proc/{pid}/fd 2>/dev/null"], timeout=10)
-    paths = set()
-    for line in raw.splitlines():
-        # each line looks like: "lrwxrwxrwx ... /proc/123/fd/4 -> /some/file"
-        if " -> " in line:
-            parts = line.split(" -> ", 1)
-            # Split by the arrow and take what came after the arrow
-            target = parts[1].strip()
-            paths.add(target)
-    return paths
-
-
-def _categorise_paths(open_paths: set[str]) -> dict[str, int]:
-    """Takes a set of file paths and figures out which sensitive categories were accessed."""
-    result = {}
-    triggered_count = 0
-
-    for category_name, prefix_list in SENSITIVE_FS.items():
-        # check if any of the open paths start with any of the sensitive prefixes
-        hit = False
-        for open_path in open_paths:
-            for prefix in prefix_list:
-                # For each path we found accessed by app, for each prefix that is sensitive, we see if the path starts with the prefix
-                if open_path.startswith(prefix):
-                    hit = True
-                    break
-            if hit:
-                # Break out since a path can't be in multiple categories
-                break
-
-        # Save the key and if it was a hit
-        key = f"dyn_fs_{category_name}"
-        result[key] = int(hit)
-
-        if hit:
-            triggered_count += 1
-
-    # Also get the number of sensitive categories hit by unique API calls and save this as a feature
-    result["dyn_fs_sensitive_category_count"] = triggered_count
-    return result
