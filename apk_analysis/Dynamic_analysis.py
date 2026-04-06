@@ -268,4 +268,72 @@ class PcapParser:
                 dst_str = socket.inet_ntoa(dst)
                 external_ips.add(dst_str)
 
+            # Grab the transport layer encapsulated in the IP packet
             transport = ip.data
+
+            # handle DNS — port 53 UDP (Check if udp and port 53 - DNS requests)
+            is_udp = isinstance(transport, dpkt.udp.UDP)
+            if is_udp and (transport.dport == 53 or transport.sport == 53):  # type: ignore
+                try:
+                    # Try decode the transport layer payload into DNS
+                    dns = dpkt.dns.DNS(transport.data)
+                    # only count actual DNS queries, not responses
+                    if dns.qr == dpkt.dns.DNS_Q:
+                        out_dict["dyn_net_dns_queries"] += 1
+                        for q in dns.qd:
+                            # Get the hostname and the root domain
+                            hostname = q.name.lower()
+                            domains.add(hostname)
+                            root = _root_domain(hostname)
+                            # check against our bad domain lists
+                            if root in DYNAMIC_DNS_DOMAINS:
+                                dyndns = True
+                            if root in KNOWN_C2_DOMAINS:
+                                c2 = True
+                except Exception:
+                    # malformed dns packet or something, just skip it
+                    pass
+
+            # handle TCP — check for suspicious ports, TLS, and cleartext HTTP
+            is_tcp = isinstance(transport, dpkt.tcp.TCP)
+            if is_tcp:
+                # Check if using a suspicious TCP port
+                if transport.dport in SUSPICIOUS_PORTS:  # type: ignore
+                    sus_ports += 1
+
+                payload = transport.data
+
+                # TLS client Hello packet starts with 0x16 (Handshake record type) 0x03 — not perfect but good enough
+                if len(payload) >= 3 and payload[0] == 0x16 and payload[1] == 0x03:
+                    # Uniquely identify flows using this fingerprint of source destination and destination port
+                    flow_key = (
+                        socket.inet_ntoa(src),
+                        socket.inet_ntoa(dst),
+                        transport.dport,  # type: ignore
+                    )
+                    # Add the unique flow key
+                    tls_flows.add(flow_key)
+
+                # rough HTTP detection on port 80
+                # I'm just checking the first 8 bytes for common methods
+                if transport.dport == 80 and len(payload) > 4:  # type: ignore
+                    try:
+                        head = payload[:8].decode("ascii", errors="ignore")
+                        http_methods = ("GET ", "POST", "PUT ", "HEAD")
+                        for method in http_methods:
+                            if head.startswith(method):
+                                http_n += 1
+                                break
+                    except Exception:
+                        pass
+
+        # write everything to output dictionary
+        out_dict["dyn_net_unique_ips"] = len(external_ips)
+        out_dict["dyn_net_unique_domains"] = len(domains)
+        out_dict["dyn_net_tls_connections"] = len(tls_flows)
+        out_dict["dyn_net_cleartext_http"] = int(http_n > 0)
+        out_dict["dyn_net_cleartext_http_count"] = http_n
+        out_dict["dyn_net_suspicious_ports"] = sus_ports
+        out_dict["dyn_net_bytes_sent"] = bytes_sent
+        out_dict["dyn_net_dyndns_hit"] = int(dyndns)
+        out_dict["dyn_net_c2_hit"] = int(c2)
