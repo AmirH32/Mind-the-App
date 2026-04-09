@@ -6,6 +6,7 @@
 import urllib.request
 import ipaddress
 from pathlib import Path
+import re
 import dpkt
 import socket
 import time
@@ -198,7 +199,7 @@ LOGCAT_APIS = {
 class PcapParser:
     """Parses a pcap file pulled off the device and returns network features."""
 
-    # these are all the keys this class will out_dictput makes it easier to initialise the dict with zeros later
+    # these are all the keys this class will out_dictput makes it easier to initialise the dict with zeros later. We share this attribute across all instances since it is a class attribute
     KEYS = [
         "dyn_net_unique_ips",
         "dyn_net_unique_domains",
@@ -521,3 +522,67 @@ class FilesystemAnalyser:
         out_dict["dyn_fs_silent_harvest"] = int(pre_triggered or background_detected)
 
         return out_dict
+
+
+class LogcatAPIAnalyser:
+    """Looks through logcat output for sensitive API usage after monkey runs."""
+
+    # Creates a list of keys for each logcat API (defined above)
+    KEYS = [f"dyn_api_{k}" for k in LOGCAT_APIS] + ["dyn_api_category_count"]
+
+    def analyse(self, pkg: str) -> dict:
+        output = {}
+
+        # Zero out each category
+        for k in self.KEYS:
+            output[k] = 0
+
+        # Dumps the current system logs from device
+        raw = _adb(["logcat", "-d"], timeout=15)
+        if not raw:
+            return output
+
+        all_lines = raw.splitlines()
+
+        # filter to lines mentioning our package, this cuts down on noise a lot
+        pkg_lines = []
+        for line in all_lines:
+            if pkg in line:
+                pkg_lines.append(line)
+
+        api_hit_count = 0
+
+        for api_name, signals in LOGCAT_APIS.items():
+            hit = False
+
+            # first try tag matching, looks for tag in the logs
+            tag_list = signals.get("tags", [])
+            for tag in tag_list:
+                pattern = rf"\b{re.escape(tag)}\b"
+                # Search all lines because the service is a system service (not a method) - global identifier
+                for line in all_lines:
+                    if re.search(pattern, line):
+                        hit = True
+                        break
+                if hit:
+                    break
+
+            # fallback to matching on substring in the logs, we use the pkg_lines to make sure the method belongs to the app
+            if not hit:
+                sub_list = signals.get("subs", [])
+                for sub in sub_list:
+                    for line in pkg_lines:
+                        if sub in line:
+                            hit = True
+                            break
+                    if hit:
+                        break
+
+            if hit:
+                # Record which API was found and increase the count of API hits
+                output[f"dyn_api_{api_name}"] = 1
+                api_hit_count += 1
+
+        output["dyn_api_category_count"] = api_hit_count
+        print(f"[api] {api_hit_count} API categories triggered for {pkg}")
+        return output
