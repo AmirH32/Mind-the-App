@@ -12,7 +12,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 from utils.config import (
     APK_DIR as CFG_APK_DIR,
     OUTPUT_CSV as CFG_OUTPUT_CSV,
@@ -48,7 +48,7 @@ class APK:
             self._suspicious_intentions()
         )
         self._suspicious_libs = self._suspicious_libraries()
-        self._num_sus_urls = self._find_num_sus_urls()
+        self._num_sus_ips, self._num_sus_urls = self._find_num_sus_urls()
 
         # Deprecated due to memory usage + noise
         # _, self._dalvikVM, self._analysis = AnalyzeAPK(self._apk_path)
@@ -81,7 +81,8 @@ class APK:
             "boot_persistance": self._boot_persistance,
             "user_persistance": self._user_persistance,
             "suspicious_libraries": self._suspicious_libs,
-            "num_sus_urls": self._num_sus_urls,
+            "num_sus_ips": self._num_sus_ips,
+            "num_sus_domains": self._num_sus_urls,
         }
 
     def _identify_suspicious_permissions(self) -> List[str]:
@@ -223,7 +224,7 @@ class APK:
                     return True
         return False
 
-    def _extract_urls_from_text(self, text: str) -> List[str]:
+    def _extract_urls_from_text(self, text: str) -> Tuple[set[str], set[str]]:
         """Extract and score URLs from text"""
 
         # Your URL regex pattern
@@ -234,7 +235,7 @@ class APK:
             r"(\/[^\s]*)?"  # Optional path
         )
 
-        results = []
+        distinct_domains = set()
         distinct_ips = set()
 
         for match in url_regex.finditer(text):
@@ -249,20 +250,28 @@ class APK:
                 continue
 
             full_url = f"{scheme}{domain}{port}{path}"
-            results.append(full_url)
+
+            # Normalise URLs missing the scheme
+            if not scheme:
+                full_url = "https://" + full_url
 
             # Check for IP address
-            if re.match(r"\d+\.\d+\.\d+\.\d+", domain) and domain not in distinct_ips:
+            if (
+                re.match(r"^(\d{1,3}\.){3}\d{1,3}$", domain)
+                and domain not in distinct_ips
+            ):
                 distinct_ips.add(domain)
-                print(f"Skipping IP address URL: {full_url}")
+            else:
+                distinct_domains.add(full_url)
 
-        return results
+        return distinct_ips, distinct_domains  # pyright: ignore
 
-    def _scan_resources_for_urls(self) -> list[str]:
+    def _scan_resources_for_urls(self) -> Tuple[set[str], set[str]]:
         """Scan text-based resource files"""
-        resource_urls = []
+        resource_ips = set()
+        resource_domains = set()
 
-        # Common text file extensions
+        # Common text file extensions (some of them are not common to android e.g. plist, ini, cfg but we will include it)
         text_extensions = {".txt", ".json", ".xml", ".config", ".plist", ".ini", ".cfg"}
         apk_obj = self._apk
 
@@ -276,14 +285,15 @@ class APK:
                     except:
                         text_content = file_data.decode("latin-1", errors="ignore")
 
-                    urls_found = self._extract_urls_from_text(text_content)
-                    resource_urls.extend(urls_found)
+                    ips, domains = self._extract_urls_from_text(text_content)
+                    resource_ips.update(ips)
+                    resource_domains.update(domains)
 
                 except:
                     # Skip binary files that fail to decode
                     continue
 
-        return resource_urls
+        return resource_ips, resource_domains  # pyright: ignore
 
     # def _scan_dex_for_urls(self) -> list[str]:
     #     """Scan DEX files for URLs in strings"""
@@ -311,9 +321,10 @@ class APK:
     #
     #     return dex_urls
 
-    def _scan_libraries_for_urls(self):
+    def _scan_libraries_for_urls(self) -> Tuple[set[str], set[str]]:
         """Scan .so library files for URLs"""
-        lib_urls = []
+        lib_ips = set()
+        lib_domains = set()
         apk_obj = self._apk
 
         # Look for .so files
@@ -332,31 +343,36 @@ class APK:
                         except:
                             continue
 
-                    urls_found = self._extract_urls_from_text(text_content)
-                    lib_urls.extend(urls_found)
-
+                    ips, domains = self._extract_urls_from_text(text_content)
+                    lib_ips.update(ips)
+                    lib_domains.update(domains)
                 except:
                     continue
 
-        return lib_urls
+        return lib_ips, lib_domains
 
-    def _find_num_sus_urls(self) -> int:
+    def _find_num_sus_urls(self) -> Tuple[int, int]:
         """Find potential C2 URLs in ALL parts of APK apart from bytecode/binary"""
 
-        sus_urls = []
+        sus_ips = set()
+        sus_domains = set()
 
         # Deprecated
         # dex_urls = self._scan_dex_for_urls()
         # sus_urls.extend(dex_urls)
 
-        lib_urls = self._scan_libraries_for_urls()
-        sus_urls.extend(lib_urls)
+        lib_ips, lib_domains = self._scan_libraries_for_urls()
+        sus_ips.update(lib_ips)
+        sus_domains.update(lib_domains)
 
-        resource_urls = self._scan_resources_for_urls()
-        sus_urls.extend(resource_urls)
+        resource_ips, resource_domains = self._scan_resources_for_urls()
+        sus_ips.update(resource_ips)
+        sus_domains.update(resource_domains)
 
-        print(f"Found {len(sus_urls)} URLs in APK resources and libraries.")
-        return len(sus_urls)
+        print(
+            f"Found {len(sus_ips)} IPs and {len(sus_domains)} domains in APK resources and libraries."
+        )
+        return len(sus_ips), len(sus_domains)
 
     # def _cleanup_analysis(self):
     # Deprecated
@@ -473,7 +489,8 @@ class APKanalyser:
             "boot_persistence",
             "user_persistence",
             "suspicious_libraries",
-            "num_suspicious_urls",
+            "num_suspicious_ips",
+            "num_suspicious_domains",
             "num_total_permissions",
             "num_suspicious_permissions",
         ] + list(perm_headers)
@@ -512,7 +529,8 @@ class APKanalyser:
                     "suspicious_libraries": 1
                     if metadata.get("suspicious_libraries")
                     else 0,
-                    "num_suspicious_urls": metadata.get("num_sus_urls", 0),
+                    "num_suspicious_ips": metadata.get("num_sus_ips", 0),
+                    "num_suspicious_domains": metadata.get("num_sus_domains", 0),
                     "num_total_permissions": len(metadata.get("permissions", [])),
                     "num_suspicious_permissions": len(
                         metadata.get("suspicious_permissions", [])
@@ -544,7 +562,7 @@ class APKanalyser:
                 print(f"Package Name: {metadata['package_name']}")
                 print(f"Version Name: {metadata['version_name']}")
                 print(
-                    f"☢️ Suspicious Permissions: {', '.join(metadata['suspicious_permissions'])}\n"
+                    f"Suspicious Permissions: {', '.join(metadata['suspicious_permissions'])}\n"
                 )
                 print(
                     f"Implied Permissions: {metadata['suspicious_implied_permissions']}\n"
@@ -561,7 +579,8 @@ class APKanalyser:
                 print(f"Boot Persistance: {metadata['boot_persistance']}")
                 print(f"User Persistance: {metadata['user_persistance']}")
                 print(f"Suspicious Libraries: {metadata['suspicious_libraries']}")
-                print(f"Number of Suspicious URLs: {metadata['num_sus_urls']}")
+                print(f"Number of Suspicious IPs: {metadata['num_sus_ips']}")
+                print(f"Number of Suspicious Domains: {metadata['num_sus_domains']}")
                 print("-" * 40)
 
         print(f"Total APKs analysed: {len(self.results)}")
