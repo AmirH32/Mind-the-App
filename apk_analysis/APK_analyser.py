@@ -224,6 +224,19 @@ class APK:
                     return True
         return False
 
+    def _is_valid_ip(self, domain: str) -> bool:
+        """Ensures the IP is valid"""
+        regex = r"^(\d{1,3}\.){3}\d{1,3}$"
+        if not re.match(regex, domain):
+            return False
+
+        # Is octet between 0-255?
+        octets = domain.split(".")
+        for octet in octets:
+            if not 0 <= int(octet) <= 255:
+                return False
+        return True
+
     def _extract_urls_from_text(self, text: str) -> Tuple[set[str], set[str]]:
         """Extract and score URLs from text"""
 
@@ -256,10 +269,7 @@ class APK:
                 full_url = "https://" + full_url
 
             # Check for IP address
-            if (
-                re.match(r"^(\d{1,3}\.){3}\d{1,3}$", domain)
-                and domain not in distinct_ips
-            ):
+            if self._is_valid_ip(domain) and domain not in distinct_ips:
                 distinct_ips.add(domain)
             else:
                 distinct_domains.add(full_url)

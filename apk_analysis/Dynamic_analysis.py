@@ -586,3 +586,119 @@ class LogcatAPIAnalyser:
         output["dyn_api_category_count"] = api_hit_count
         print(f"[api] {api_hit_count} API categories triggered for {pkg}")
         return output
+
+
+class ConsentTransparencyAnalyser:
+    """
+    Checks whether the app is actually transparent about collecting data.
+    This is the most important layer for dual-use classification.
+
+    Features:
+        dyn_consent_hidden_icon: no launcher activity in the manifest
+        dyn_consent_silent_gps: location was polled but no notification posted
+        dyn_consent_silent_contacts: contacts read but no notification posted
+        dyn_consent_no_notification: sensitive APIs triggered but NotificationManager
+                                         never called at all during the run
+        dyn_consent_prelaunch_network: network traffic detected before monkey started
+                                         (possible phone home?)
+        dyn_consent_score: 0-5 additive score, higher = more suspicious
+    """
+
+    KEYS = [
+        "dyn_consent_hidden_icon",
+        "dyn_consent_silent_gps",
+        "dyn_consent_silent_contacts",
+        "dyn_consent_no_notification",
+        "dyn_consent_prelaunch_network",
+        "dyn_consent_score",
+    ]
+
+    def analyse(
+        self, pkg: str, apk_path: Path, logcat_features: dict, pre_pcap_bytes: int
+    ) -> dict:
+        out = {}
+        for k in self.KEYS:
+            out[k] = 0
+
+        score = 0
+
+        # 1. check if the app has a hidden icon by re-reading the manifest
+        #    doing this here instead of relying on the static analysis CSV
+        #    in case the CSV hasnt been run yet or is out of date
+        hidden = self._has_hidden_icon(apk_path)
+        out["dyn_consent_hidden_icon"] = int(hidden)
+        if hidden:
+            score += 1
+
+        # 2. did the app post any notifications at all during the run?
+        notification_was_posted = self._notification_posted(pkg)
+        out["dyn_consent_no_notification"] = int(not notification_was_posted)
+        if not notification_was_posted:
+            score += 1
+
+        # 3. silent GPS — using location but not telling the user via notification
+        gps_was_active = logcat_features.get("dyn_api_location", 0)
+        if gps_was_active and not notification_was_posted:
+            out["dyn_consent_silent_gps"] = 1
+            score += 1
+
+        # 4. same idea for contacts
+        contacts_were_read = logcat_features.get("dyn_api_contacts_read", 0)
+        if contacts_were_read and not notification_was_posted:
+            out["dyn_consent_silent_contacts"] = 1
+            score += 1
+
+        # 5. pre-launch network traffic means the app sent data before the user
+        #    did anything — definitely suspicious
+        had_prelaunch_traffic = pre_pcap_bytes > 0
+        out["dyn_consent_prelaunch_network"] = int(had_prelaunch_traffic)
+        if had_prelaunch_traffic:
+            score += 1
+
+        out["dyn_consent_score"] = score
+        logger.info(
+            f"[consent] score={score}/5  hidden={hidden}  notification={notification_was_posted}"
+        )
+        return out
+
+    def _has_hidden_icon(self, apk_path: Path) -> bool:
+        # check the APK manifest directly for a launcher activity
+        # if there isnt one the app icon wont show in the launcher — classic stalkerware thing
+        try:
+            apk = AndroguardAPK(str(apk_path))
+            activities = apk.get_activities()
+
+            for activity in activities:
+                filters = apk.get_intent_filters("activity", activity)
+                for filter_key, filter_vals in filters.items():
+                    if "android.intent.category.LAUNCHER" in filter_vals:
+                        # found a launcher activity, icon is visible
+                        return False
+
+            # got through all activities and none had LAUNCHER — icon is hidden
+            return True
+
+        except Exception:
+            # if we cant parse the APK just assume not hidden to avoid false positives
+            return False
+
+    def _notification_posted(self, pkg: str) -> bool:
+        """Check logcat to see if the package posted any notification during the run."""
+        raw = _adb(["logcat", "-d"], timeout=15)
+        all_lines = raw.splitlines()
+
+        # filter to lines that mention our package
+        pkg_lines = []
+        for line in all_lines:
+            if pkg in line:
+                pkg_lines.append(line)
+
+        # these strings appearing in logcat mean a notification was posted
+        notif_patterns = ["NotificationManager", "notify(", "startForeground"]
+
+        for line in pkg_lines:
+            for pattern in notif_patterns:
+                if pattern in line:
+                    return True
+
+        return False
