@@ -19,9 +19,13 @@ from utils.config import (
     JSON_PATH as CFG_JSON_PATH,
 )
 
+HEAD_CHUNK = 512 * 1024  # 512 KB
+
 
 class APK:
-    def __init__(self, apk_path: str, suspicious_list: List[str]):
+    def __init__(
+        self, apk_path: str, suspicious_list: List[str], head_only: bool = False
+    ):
         """
         APK wrapper class to store the metadata from static APK analysis
 
@@ -30,6 +34,7 @@ class APK:
         """
         self._apk_path = apk_path
         self._apk = AndroguardAPK(apk_path)
+        self._head_only = head_only
         self._package_name = self._apk.get_package()
         print(f"Analysing {self._package_name}...")
         self._app_name = self._apk.get_app_name()
@@ -100,7 +105,7 @@ class APK:
 
     def _identify_suspicious_implied_permissions(self) -> List[str]:
         """
-        Identifies suspicious implied permissions based on targeted SDK version
+        Identifies suspicious that are implied permissions based on targeted SDK version
         Returns:
         list: A list of suspicious implied permissions.
         """
@@ -110,7 +115,9 @@ class APK:
         high_risk_implied_permissions = [
             "android.permission.READ_EXTERNAL_STORAGE",
             "android.permission.WRITE_EXTERNAL_STORAGE",
-            "android.permission.READ_PHONE_STATE",  # Could be implied on very old SDK
+            "android.permission.ACCESS_COARSE_LOCATION",
+            "android.permission.ACCESS_FINE_LOCATION",
+            "android.permission.RECEIVE_BOOT_COMPLETED",
         ]
 
         for pair in raw_implied:
@@ -118,7 +125,7 @@ class APK:
                 perm_name = pair[0]
 
                 if perm_name in high_risk_implied_permissions:
-                    suspicious_perms.append(perm_name)
+                    suspicious_perms.append(f"implied:{perm_name}")
         return suspicious_perms
 
     def _suspicious_intentions(self) -> tuple[bool, bool, bool]:
@@ -341,7 +348,11 @@ class APK:
         for file_name in apk_obj.zip.namelist():
             if file_name.endswith(".so"):
                 try:
-                    file_data = apk_obj.zip.read(file_name)
+                    with apk_obj.zip.open(file_name) as lib_file:
+                        if self._head_only:
+                            file_data = lib_file.read(HEAD_CHUNK)
+                        else:
+                            file_data = lib_file.read()
 
                     try:
                         # Try UTF-8
@@ -425,14 +436,16 @@ class APKanalyser:
         self._load_apks()  # Load APKs from the directory
 
     @staticmethod
-    def analyse_single_apk(apk_path, suspicious_list: List[str]):
+    def analyse_single_apk(
+        apk_path, suspicious_list: List[str], head_only: bool = False
+    ):
         """
         Standalone function for the ProcessPool to execute.
         This must be outside the class to be 'picklable'.
         """
         try:
             # We initialize the API object inside the child process, passing it suspicious_list so it can call the identify_suspicious_permissions method without needing to read the JSON file each APK run
-            apk_instance = APK(str(apk_path), suspicious_list)
+            apk_instance = APK(str(apk_path), suspicious_list, head_only=head_only)
             metadata = apk_instance.get_metadata()
 
             # The object is destroyed when this process exits
@@ -440,7 +453,7 @@ class APKanalyser:
         except Exception as e:
             return {"error": str(e), "apk_name": str(apk_path)}
 
-    def _load_apks(self, timeout=150):
+    def _load_apks(self, timeout=180, timeout_fallback=120):
         """
         Private Method that constructs APK objects for each APK file in the specified directory. It then stores the metadata of each APK in the results list. Skips files that have already been processed previously
 
@@ -449,6 +462,9 @@ class APKanalyser:
         """
         # Get the suspicious list once so we don't have to do it each time
         suspicious_list = self.get_suspicious_permissions(self._json_path)  # pyright: ignore
+
+        # List of APKs that timed out during static analysis
+        timed_out_apks = []
 
         self.results = []
 
@@ -467,20 +483,39 @@ class APKanalyser:
         print(f"Found {len(apk_files)} new APKs to analyse.")
 
         # Process one by one to keep memory low and allow for OS preemption, but with a timeout
-        with ProcessPoolExecutor(max_workers=1) as executor:
-            for apk_path in tqdm.tqdm(apk_files, desc="Analysing"):
+        for apk_path in tqdm.tqdm(apk_files, desc="Analysing"):
+            result = None
+            with ProcessPoolExecutor(max_workers=1) as executor:
                 # Pass suspicious_list into analyse_single_apk
                 future = executor.submit(
-                    self.analyse_single_apk, apk_path, suspicious_list
+                    self.analyse_single_apk, apk_path, suspicious_list, False
                 )
                 try:
                     # Wait for the result with a strict timeout
                     result = future.result(timeout=timeout)
                     self.results.append(result)
                 except TimeoutError:
-                    print(f"\n[!] Timeout reached for {apk_path.name}. Skipping...")
+                    print(f"\n[TIMEOUT] for {apk_path.name}. Skipping...")
+                    future.cancel()  # Terminate the process if it's still running
+                    executor.shutdown(wait=False, cancel_futures=True)
                 except Exception as e:
-                    print(f"\n[!] Error processing {apk_path.name}: {e}")
+                    print(f"\n[ERROR] processing {apk_path.name}: {e}")
+
+            # Fallback mechanism if timeout, tries to only scan the heads of files instead
+            if result is None:
+                with ProcessPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        self.analyse_single_apk, apk_path, suspicious_list, True
+                    )
+                    try:
+                        result = future.result(timeout=timeout_fallback)
+                        print(f"\n[SUCCESS] Headscan for {apk_path.name}.")
+                    except TimeoutError:
+                        print(f"\n[TIMEOUT] Headscan for {apk_path.name}. Skipping.")
+                        timed_out_apks.append(apk_path.name)
+                        executor.shutdown(wait=False, cancel_futures=True)
+
+        print(f"Following APKs timeod out: {timed_out_apks}")
 
     def export_features(self, output_csv, append=False):
         """
