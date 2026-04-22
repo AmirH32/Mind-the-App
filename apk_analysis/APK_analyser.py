@@ -118,7 +118,8 @@ class APK:
             "android.permission.ACCESS_COARSE_LOCATION",
             "android.permission.ACCESS_FINE_LOCATION",
             "android.permission.RECEIVE_BOOT_COMPLETED",
-            "android.permission.READ_CALL_LOG",
+            "android.permission.READ_CALL_LOG",  # implied by READ_CONTACTS and Sdk is <= 15
+            "android.permission.READ_PHONE_STATE",  # implied by Sdk < 3
         ]
 
         for pair in raw_implied:
