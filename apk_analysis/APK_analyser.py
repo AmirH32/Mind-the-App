@@ -118,6 +118,7 @@ class APK:
             "android.permission.ACCESS_COARSE_LOCATION",
             "android.permission.ACCESS_FINE_LOCATION",
             "android.permission.RECEIVE_BOOT_COMPLETED",
+            "android.permission.READ_CALL_LOG",
         ]
 
         for pair in raw_implied:
