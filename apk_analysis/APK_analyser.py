@@ -45,10 +45,13 @@ class APK:
         self._suspicious_implied_perms = self._identify_suspicious_implied_permissions()
         self._target_old_sdk = self._apk.get_target_sdk_version() <= "19"
         self._activities = self._apk.get_activities()
-        # self._services = self._apk.get_services()
-        # self._receivers = self._apk.get_receivers()
-        # self._providers = self._apk.get_providers()
-        # self._activity_aliases = self._apk.get_activity_aliases()
+        self._services = self._apk.get_services()
+        self._receivers = self._apk.get_receivers()
+        self._providers = self._apk.get_providers()
+        self._activity_aliases = self._apk.get_activity_aliases()
+        self._exported_provider = self._has_exported_provider()
+        self.suspicious_service = self._has_suspicious_service()
+        self._suspicious_receiver_score = self._has_suspicious_receiver()
         self._hidden_icon, self._boot_persistance, self._user_persistance = (
             self._suspicious_intentions()
         )
@@ -82,12 +85,15 @@ class APK:
             # "receivers": self._receivers,
             # "providers": self._providers,
             # "activity_aliases": self._activity_aliases,
-            # "hidden_icon": self._hidden_icon,
+            "hidden_icon": self._hidden_icon,
             "boot_persistance": self._boot_persistance,
             "user_persistance": self._user_persistance,
             "suspicious_libraries": self._suspicious_libs,
             "num_sus_ips": self._num_sus_ips,
             "num_sus_domains": self._num_sus_urls,
+            "exported_provider": self._exported_provider,
+            "suspicious_service": self.suspicious_service,
+            "suspicious_receiver_score": self._suspicious_receiver_score,
         }
 
     def _identify_suspicious_permissions(self) -> List[str]:
@@ -160,7 +166,7 @@ class APK:
                     if "android.intent.action.USER_PRESENT" in filter_values:
                         user_persistance = True
 
-        return (has_launcher_activity, boot_persistance, user_persistance)
+        return (not (has_launcher_activity), boot_persistance, user_persistance)
 
     def _has_declared_permissions(self) -> bool:
         """
@@ -397,6 +403,69 @@ class APK:
         )
         return len(sus_ips), len(sus_domains)
 
+    def _has_suspicious_service(self) -> bool:
+        """Check if any service extends AccessibilityService or ForegroundService"""
+        suspicious_keywords = ["accessibility", "foreground"]
+        for service in self._services:
+            service_lower = service.lower()
+            for kw in suspicious_keywords:
+                if kw in service_lower:
+                    return True
+        return False
+
+    def _has_suspicious_receiver(self) -> int:
+        """Check if any receiver listens for high risk broadcast actions"""
+        score = 0
+
+        SUSPICIOUS_RECEIVER_ACTIONS = {
+            "android.provider.Telephony.SMS_RECEIVED",
+            "android.intent.action.PHONE_STATE",
+            "android.intent.action.NEW_OUTGOING_CALL",
+            "android.net.conn.CONNECTIVITY_CHANGE",
+            "android.intent.action.PACKAGE_REPLACED",
+            "android.intent.action.PACKAGE_ADDED",
+            "android.intent.action.BOOT_COMPLETED",
+            "android.intent.action.LOCKED_BOOT_COMPLETED",
+            "android.intent.action.USER_PRESENT",
+            "android.intent.action.SCREEN_ON",
+            "android.intent.action.SCREEN_OFF",
+        }
+
+        KEYWORDS = [
+            "GeofenceTransitionsReceiver",
+            "BootReceiver",
+            "Notification",
+            "Battery",
+        ]
+        for receiver in self._receivers:
+            filters = self._apk.get_intent_filters("receiver", receiver)
+            for filter_values in filters.values():
+                if SUSPICIOUS_RECEIVER_ACTIONS & set(filter_values):
+                    score += 2
+                if any(kw.lower() in receiver.lower() for kw in KEYWORDS):
+                    score += 1
+        return score
+
+    def _has_exported_provider(self) -> bool:
+        """Check if any provider is exported by checking intent filters."""
+        # Also check using get_all_attribute_value to examine the exported attribute directly
+        exported_providers = list(
+            self._apk.get_all_attribute_value("provider", "exported")
+        )
+
+        # If any provider has exported="true" in manifest
+        if any(exported == "true" for exported in exported_providers):
+            return True
+
+        # Otherwise check for intent filters that show export
+        for provider in self._providers:
+            intent_filters = self._apk.get_intent_filters("provider", provider)
+            if intent_filters:
+                # Provider has intent filters, likely exported
+                return True
+
+        return False
+
     # def _cleanup_analysis(self):
     # Deprecated
     #     """Cleanup analysis objects to free memory"""
@@ -524,6 +593,7 @@ class APKanalyser:
         Exports extracted features to a CSV file formatted for ML training.
         Includes a 'label' column for your ground truth.
         """
+        print("Exporting features to CSV...")
         critical_permissions = self.get_suspicious_permissions(self._json_path)  # pyright: ignore
         perm_headers = [f"perm_{p.split('.')[-1]}" for p in critical_permissions]
 
@@ -540,6 +610,10 @@ class APKanalyser:
             "num_suspicious_domains",
             "num_total_permissions",
             "num_suspicious_permissions",
+            "exported_provider",
+            "suspicious_service",
+            "suspicious_receiver_score",
+            "hidden_icon",
         ] + list(perm_headers)
 
         # Check if the csv file already exists, if it does we don't want to overwrite
@@ -582,6 +656,14 @@ class APKanalyser:
                     "num_suspicious_permissions": len(
                         metadata.get("suspicious_permissions", [])
                     ),
+                    "exported_provider": 1 if metadata.get("exported_provider") else 0,
+                    "suspicious_service": 1
+                    if metadata.get("suspicious_service")
+                    else 0,
+                    "suspicious_receiver_score": metadata.get(
+                        "suspicious_receiver_score", 0
+                    ),
+                    "hidden_icon": 1 if metadata.get("hidden_icon") else 0,
                 }
 
                 # Fill in the 1s and 0s for critical permissions
@@ -593,6 +675,7 @@ class APKanalyser:
                         row[header] = 0
 
                 writer.writerow(row)
+        print(f"Features have been exported to {output_csv}.")
 
     def output_features(self):
         """
@@ -615,6 +698,11 @@ class APKanalyser:
                     f"Implied Permissions: {metadata['suspicious_implied_permissions']}\n"
                 )
                 print(f"Targets Old SDK: {metadata['targets_old_sdk']}")
+                print(f"Exported Provider: {metadata['exported_provider']}")
+                print(f"Suspicious Service: {metadata['suspicious_service']}")
+                print(
+                    f"Suspicious Receiver Score: {metadata['suspicious_receiver_score']}"
+                )
                 # print(f"Activities: {', '.join(metadata['activities'])}")
                 # print(f"Services: {', '.join(metadata['services'])}")
                 # print(f"Receivers: {', '.join(metadata['receivers'])}")
@@ -622,7 +710,7 @@ class APKanalyser:
                 # print(
                 #     f"Activity Aliases: {', '.join(f'Name:{name} target:{target}' for name, target in metadata['activity_aliases'])}"
                 # )
-                # print(f"Hidden Icon: {metadata['hidden_icon']}")
+                print(f"Hidden Icon: {metadata['hidden_icon']}")
                 print(f"Boot Persistance: {metadata['boot_persistance']}")
                 print(f"User Persistance: {metadata['user_persistance']}")
                 print(f"Suspicious Libraries: {metadata['suspicious_libraries']}")
