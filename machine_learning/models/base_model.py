@@ -1,3 +1,20 @@
+# Mind the App: Detecting Dual-Use Applications
+# Copyright (C) 2026 Amir Hassanali
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 from abc import ABC
 import pandas as pd
 import numpy as np
@@ -18,16 +35,7 @@ from sklearn.metrics import (
 
 @dataclass
 class ModelConfig:
-    """
-    Configuration for each model type
-
-    Attributes:
-        name (str): Name of the model
-        param_space (Dict[str, List): Hyperparameter space for tuning
-        pipeline (Optional[Pipeline]): Predefined Pipeline
-        cv_folds (int): Number of cross-val folds
-        metric (str):  metric for eval
-    """
+    """Configuration for each model type"""
 
     name: str
     param_space: Dict[str, List]
@@ -37,18 +45,7 @@ class ModelConfig:
 
 
 class BaseModel(ABC):
-    """
-
-    Abstract base class for all ML models
-
-    Attributes:
-        config (ModelConfig): Configuration for the model
-        model (Any): Trained model instance
-        best_params (Dict[str, Any]): Best hyperparameters after tuning
-        best_score (float): Best score achieved during tuning
-        feature_importance (Optional[pd.DataFrame]): Feature importance DataFrame
-        scaler (StandardScaler): Scaler for feature normalising
-    """
+    """Abstract base class for all ML models"""
 
     def __init__(self, config: ModelConfig):
         self.config = config
@@ -59,27 +56,12 @@ class BaseModel(ABC):
         self.scaler = StandardScaler()
 
     def create_pipeline(self) -> Pipeline:
-        """
-        Create model pipeline
-
-        Returns:
-            Pipeline: pipeline object
-        """
+        """Create model pipeline"""
         raise NotImplementedError("Subclass must implemet create_pipeline method")
 
     def fit(self, X_train: pd.DataFrame, y_train: pd.Series) -> "BaseModel":
-        """
-        Train model with grid search
-
-        Args:
-            X_train (pd.DataFrame): Training features
-            y_train (pd.Series): Training labels
-
-        Returns:
-            BaseModel: Trained model
-        """
-        print(f"\n{'=' * 60}")
-        print(f"TRANING {self.config.name.upper()}")
+        """Train model with grid search"""
+        print(f"|TRANING {self.config.name.upper()}")
 
         if self.config.pipeline is None:
             self.config.pipeline = self.create_pipeline()
@@ -106,45 +88,21 @@ class BaseModel(ABC):
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """
-        Makes predictions using the best model
-
-        Args:
-            X (pd.DataFrame): Features
-
-        Returns:
-            np.ndarray: Predicted labels
-        """
+        """Makes predictions using the best model"""
         if self.model is None:
             raise ValueError("Model not trained yet. Call fit() first.")
         # Predictions using the obtained model
         return self.model.predict(X)
 
     def predict_probs(self, X: pd.DataFrame) -> np.ndarray:
-        """
-        Get prediction probs
-
-        Args:
-            X (pd.DataFrame): features
-        Returns:
-            np.ndarray: Predicted probs
-        """
+        """Get prediction probs"""
         if self.model is None:
             raise ValueError("Model not trained yet. Call fit() first.")
         # Get the prediction probabilities obtained from the model
         return self.model.predict_proba(X)
 
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series) -> Dict[str, float]:
-        """
-        Evaluate model
-
-        Args:
-            X_test (pd.DataFrame): Features
-            y_test (pd.Series): True labels
-
-        Returns:
-            Dict[str, float]: Dictionary of eval metric
-        """
+        """Evaluate model"""
         # Get predicted labels
         y_pred = self.predict(X_test)
 
@@ -171,15 +129,7 @@ class BaseModel(ABC):
     def get_feature_importance(
         self, feature_names: List[str]
     ) -> Optional[pd.DataFrame]:
-        """
-        Find the most important features
-
-        Args:
-            feature_names (List[str]): List of features
-
-        Returns:
-            pd.DataFrame: DataFrame of features and numerical importance
-        """
+        """Find the most important features"""
         if self.model:
             # Extract the actual classifier from the pipeline
             try:

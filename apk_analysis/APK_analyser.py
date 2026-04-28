@@ -1,3 +1,19 @@
+# Mind the App: Detecting Dual-Use Applications
+# Copyright (C) 2026 Amir Hassanali
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 # File Purpose - used to extract static features from APKs
 
 from androguard.core.apk import APK as AndroguardAPK
@@ -43,12 +59,12 @@ class APK:
         self._suspicious_list = suspicious_list
         self._suspicious_permissions = self._identify_suspicious_permissions()
         self._suspicious_implied_perms = self._identify_suspicious_implied_permissions()
-        self._target_old_sdk = self._apk.get_target_sdk_version() <= "19"
+        self._target_old_sdk = self._apk.get_target_sdk_version() <= "22"
         self._activities = self._apk.get_activities()
         self._services = self._apk.get_services()
         self._receivers = self._apk.get_receivers()
         self._providers = self._apk.get_providers()
-        self._activity_aliases = self._apk.get_activity_aliases()
+        # self._activity_aliases = self._apk.get_activity_aliases() deprecated since it is not a strong signal and adds complexity to the code
         self._exported_provider = self._has_exported_provider()
         self.suspicious_service = self._has_suspicious_service()
         self._suspicious_receiver_score = self._has_suspicious_receiver()
