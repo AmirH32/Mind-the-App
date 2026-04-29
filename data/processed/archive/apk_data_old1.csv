@@ -1,0 +1,103 @@
+apk_name,package_name,label,risk_score_prediction,targets_old_sdk,boot_persistence,user_persistence,suspicious_libraries,num_suspicious_urls,num_total_permissions,num_suspicious_permissions,perm_CAMERA,perm_RECORD_AUDIO,perm_WAKE_LOCK,perm_SYSTEM_ALERT_WINDOW,perm_BLUETOOTH_ADMIN,perm_WRITE_SETTINGS,perm_WRITE_SECURE_SETTINGS,perm_ACCESS_COARSE_LOCATION,perm_ACCESS_FINE_LOCATION,perm_ACCESS_BACKGROUND_LOCATION,perm_FOREGROUND_SERVICE_LOCATION,perm_ACTIVITY_RECOGNITION,perm_ACTIVITY_RECOGNITION,perm_ACCESS_WIFI_STATE,perm_ACCESS_NETWORK_STATE,perm_CHANGE_WIFI_STATE,perm_FOREGROUND_SERVICE_MICROPHONE,perm_FOREGROUND_SERVICE_CAMERA,perm_ACCESS_NOTIFICATION_POLICY,perm_RECEIVE_BOOT_COMPLETED,perm_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,perm_REQUEST_DELETE_PACKAGES
+Kids360: Parental Control App 2.41.0.apk,app.kids360.parent,1,,0,0,0,1,213988,22,6,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+TP-Link Tether 4.12.133_base.apk,com.tplink.tether,0,,0,0,0,0,496712,30,9,1,0,1,1,1,0,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0
+CapCut - Video Editor 16.2.0_base.apk,com.lemon.lvoverseas,0,,0,0,0,0,393068,38,6,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0
+AirDroid Parental Control 2.6.4.0_base.apk,com.sand.airdroidkidp,1,,0,0,0,0,205887,31,12,1,1,1,1,0,0,0,1,1,0,0,0,0,1,1,1,1,0,1,1,0,0
+Find my Phone - Family Locator 6.20.6.apk,com.sygic.familywhere.android,1,,0,0,0,0,53311,26,10,1,0,1,0,0,0,0,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0
+Life360: Stay Connected & Safe 26.1.1_base.apk,com.life360.android.safetymapd,1,,0,0,0,0,425699,43,16,1,1,1,0,1,0,0,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0
+Google Family Link 2.66.0.2025w47.842281197_base.apk,com.google.android.apps.kids.familylink,1,,0,0,0,0,10455,14,3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0
+Familo: Find My Phone Locator 2.99.3.apk,net.familo.android,1,,0,0,0,0,27681,28,9,1,0,1,0,0,0,0,1,1,1,0,0,0,1,1,0,0,0,0,1,1,0
+FlashGet Kids:parental control 1.3.6.1_base.apk,com.flashget.parentalcontrol,1,,0,0,0,0,95531,24,8,1,0,1,1,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+IMEI tracker find my device 25.6.29_base.apk,com.hammersecurity,1,,0,0,0,0,132757,44,15,1,1,1,1,0,0,0,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1
+Family Link parental controls 1.135.0.2025w42.819242325.trampoline.apk,com.google.android.apps.kids.familylinkhelper,1,,0,0,0,0,1709,8,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+Google Play services 25.47.63_base.apk,com.google.android.gms,0,,0,0,0,1,207422,343,18,1,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,0,1,1,0,1
+Google Play Store 47.3.29_base.apk,com.android.vending,0,,0,0,0,0,74840,135,10,0,1,1,0,1,1,1,1,0,0,0,0,0,1,1,1,0,0,0,1,0,0
+"com.qustodio.family.parental.control.app.screentime_182.34.0-1823400_minAPI24(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.qustodio.family.parental.control.app.screentime,1,,0,0,0,1,5701,34,4,0,0,1,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.lemon.lvoverseas_16.9.0-16900002_2arch_7dpi_25lang_5f9725842da40cd4cc8b52a3c0eab3e4_apkmirror.com_base.apk,com.lemon.lvoverseas,0,,0,0,0,0,395806,38,6,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0
+com.sygic.familywhere.android_6.21.4-236_minAPI21(nodpi)_apkmirror.com.apk,com.sygic.familywhere.android,1,,0,0,0,0,53348,27,10,1,0,1,0,0,0,0,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0
+"com.wondershare.famisafe_7.2.8.9730-9730_minAPI21(arm64-v8a,armeabi,armeabi-v7a,mips,mips64,x86,x86_64)(nodpi)_apkmirror.com.apk",com.wondershare.famisafe,1,,0,0,0,1,219012,29,10,1,0,1,0,0,0,0,1,1,1,0,1,1,1,1,1,0,0,0,1,0,0
+com.sand.airdroidkidp_2.7.1.0-20701000_2arch_0a911186c40d9151e315c1a9907dd185_apkmirror.com_base.apk,com.sand.airdroidkidp,1,,0,0,0,0,229366,31,12,1,1,1,1,0,0,0,1,1,0,0,0,0,1,1,1,1,0,1,1,0,0
+com.google.android.apps.bard_1.0.795460806-272_4arch_7dpi_37lang_de65d93eaabd550c86167763b8fd47ad_apkmirror.com (2)_base.apk,com.google.android.apps.bard,0,,0,0,0,0,4259,3,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.life360.android.safetymapd_26.7.0-2868110_4arch_7dpi_24lang_e347a91b70849f388f14acd37023a316_apkmirror.com_base.apk,com.life360.android.safetymapd,1,,0,0,0,0,461823,44,16,1,1,1,0,1,0,0,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0
+com.textmeinc.textme_3.51.0-351000013_4arch_5dpi_24lang_3b3d3ba007a11c9b1410f60bedbc3556_apkmirror.com_base.apk,com.textmeinc.textme,0,,0,0,0,0,32499,63,14,1,1,1,1,1,0,0,1,1,0,1,0,0,1,1,1,1,0,1,1,0,0
+io.yuka.android_4.55.3-839_4arch_7dpi_5lang_88dd7bf38d7d96d9d5cf397fcef251ed_apkmirror.com_base.apk,io.yuka.android,0,,0,0,0,0,726513,24,6,1,0,1,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,1,0,0
+"com.PYOPYO.StarTracker_1.6.115-282_minAPI29(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",com.PYOPYO.StarTracker,0,,0,0,0,1,5363,22,7,0,0,1,0,0,0,0,1,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+com.nintendo.znma_2.3.2-640_4arch_7dpi_11lang_c6b5ac63d7dc4d1ca60475845bb46fc5_apkmirror.com_base.apk,com.nintendo.znma,0,,0,0,0,0,24226,12,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.riteshsahu.SMSBackupRestore_10.24.003-1024003_minAPI23(nodpi)_apkmirror.com.apk,com.riteshsahu.SMSBackupRestore,1,,0,0,0,0,14061,30,5,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,0,0
+com.google.android.documentsui_16-360110000_minAPI30(nodpi)_apkmirror.com (1).apk,com.google.android.documentsui,0,,0,0,0,0,7208,18,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0
+"com.samsung.android.wear.shealth_6.30.7.003-6307003_minAPI35(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",com.samsung.android.wear.shealth,0,,0,0,0,1,785215,68,12,0,0,1,1,1,1,1,1,1,0,1,0,0,0,1,0,0,0,0,1,1,0
+"com.samsung.android.app.find_1.9.00.25-190025000_minAPI29(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",com.samsung.android.app.find,1,,0,0,0,1,68881,51,9,1,0,1,0,0,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,0,0
+com.gawk.smsforwarder_10.9.0-300_4arch_7dpi_24lang_f40ff1274f33517ec6f6dcd6a69bcacf_apkmirror.com_base.apk,com.gawk.smsforwarder,1,,0,0,0,0,14031,28,5,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0
+"com.sec.android.easyMover_3.7.69.15-376915130_minAPI21(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",com.sec.android.easyMover,0,,0,0,0,1,17613,241,11,1,0,1,0,1,1,1,0,1,0,0,0,0,1,1,1,0,0,0,1,1,0
+com.atlogis.nzmaps.free_7.8.8-436_4arch_7dpi_24lang_220ef2034cdfd02ec1c7829d0f9b175f_apkmirror.com_base.apk,com.atlogis.nzmaps.free,0,,0,0,0,0,30347,20,7,0,0,1,0,0,0,0,1,1,1,1,0,0,0,1,0,0,0,0,0,1,0
+com.sand.airmirror_1.1.6.1-10106010_2arch_b52a7c0ad5c7e2ee7175dce1abe9f6d9_apkmirror.com_base.apk,com.sand.airmirror,1,,0,0,0,0,4153,31,8,0,1,1,1,0,1,0,0,0,0,0,0,0,1,1,1,0,0,0,1,0,0
+com.studiowildcard.arkuse_1.0-8_1arch_1feat_e4a414955969fee9f4d4fce166565448_apkmirror.com_base.apk,com.studiowildcard.arkuse,0,,0,0,0,0,4496,13,4,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0
+com.isharing.isharing_12.11.11.2-2152_4arch_7dpi_24lang_1b628f01517a935dd87866f33a74c824_apkmirror.com_base.apk,com.isharing.isharing,1,,0,0,0,0,22657,40,15,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,0
+com.mapswithme.maps.pro_v17.7.71971-googleRelease-71971_4arch_7dpi_89197dbcfbeb61c2a2d6ec2f53cec416_apkmirror.com_base.apk,com.mapswithme.maps.pro,0,,0,0,0,0,991758,29,9,1,0,1,0,0,0,0,1,1,0,1,0,0,1,1,1,0,0,0,1,0,0
+epic.mychart.android_11.7.1-3687_4arch_6dpi_2c4615a58f2f05f3520a1ceeb1425aa1_apkmirror.com_base.apk,epic.mychart.android,0,,0,0,0,0,100547,50,10,1,1,1,0,1,0,0,1,1,1,1,0,0,0,1,0,0,0,0,1,0,0
+"com.here.app.maps_4.18.100-48782000_minAPI26(arm64-v8a,armeabi-v7a,x86_64)(nodpi)_apkmirror.com.apk",com.here.app.maps,0,,0,0,0,1,247167,27,9,0,1,1,0,1,0,0,1,1,0,1,0,0,1,1,1,0,0,0,0,0,0
+com.geozilla.family_6.81.4-131771_4arch_7dpi_24lang_7ceb3e5c67f2e77cc3e89516b0ac62d3_apkmirror.com_base.apk,com.geozilla.family,1,,0,0,0,0,62622,32,11,1,0,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,0,0
+com.alarmnet.tc2_6.63.1.707.pr.-6630102_minAPI30(armeabi-v7a)(nodpi)_apkmirror.com.apk,com.alarmnet.tc2,0,,0,0,0,1,136424,29,11,1,1,1,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,0,1,0,0
+com.overlook.android.fing_12.11.8-121108005_4arch_7dpi_24lang_38e1b2a8d86364c6634251b98b55c99b_apkmirror.com_base.apk,com.overlook.android.fing,0,,0,0,0,0,6030,24,4,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+me.dingtone.app.im_6.4.9-681_2arch_7dpi_68f1d5c31ebd27ee1421151d542a89a0_apkmirror.com_base.apk,me.dingtone.app.im,0,,0,0,0,0,6789,33,9,1,1,1,1,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.sygic.aura_26.0.2-105446-260260002_minAPI26(armeabi-v7a)(nodpi)_apkmirror.com.apk,com.sygic.aura,0,,0,0,0,1,2132977,33,8,1,1,1,0,0,0,0,1,1,0,1,0,0,1,1,0,0,0,0,0,0,0
+"com.becloser_4.5.26-193_minAPI28(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.becloser,1,,0,0,0,1,22232,50,13,1,0,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,0,0
+com.immediasemi.android.blink_52.0-29473654_4arch_7dpi_24lang_08a43192064422e0e678b4dfc574109c_apkmirror.com_base.apk,com.immediasemi.android.blink,0,,0,0,0,0,1804512,27,9,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+com.grabtaxi.passenger_5.399.0-53990000_3arch_7dpi_8lang_8c793f5b83cd3366cbd66d5ca9e09330_apkmirror.com_base.apk,com.grabtaxi.passenger,0,,0,0,0,0,1111533,59,13,1,1,1,1,0,0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,0,0
+"ch.protonmail.android_7.8.0-16549_minAPI29(arm64-v8a,armeabi,armeabi-v7a,mips,mips64,x86,x86_64)(nodpi)_apkmirror.com.apk",ch.protonmail.android,0,,0,0,0,1,120371,13,4,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0
+"com.google.zagat_5.3.4-31148_minAPI21(arm64-v8a,armeabi,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.google.zagat,0,,0,0,0,1,11062,11,5,1,0,1,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.apkmirror.helper.prod_2.0.3_(41-d04e542)-41_4arch_7dpi_25lang_8af5b594a9c073ff4c0de0a630377b4e_apkmirror.com_base.apk,com.apkmirror.helper.prod,0,,0,0,0,0,3557,19,3,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.maps.voice.navigation.traffic.gps.location.route.driving.directions_13.83-426_4arch_7dpi_bab4842accca81dc9527ee87a5de2329_apkmirror.com_base.apk,com.maps.voice.navigation.traffic.gps.location.route.driving.directions,1,,0,0,0,0,108124,34,10,1,1,1,1,0,0,0,0,0,0,1,0,0,1,1,1,0,0,1,1,0,0
+org.thoughtcrime.securesms_8.2.2-166301_4arch_7dpi_b2128dcd9c48796a0aa9319419c882f9_apkmirror.com_base.apk,org.thoughtcrime.securesms,0,,0,0,0,0,194369,73,13,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0
+com.waze_5.17.1.0-1030685_2arch_96244eee2ff474004d6aac56c71302af_apkmirror.com_base.apk,com.waze,0,,0,0,0,0,132998,42,11,1,1,1,1,1,0,0,1,1,1,1,0,0,0,1,0,0,0,0,1,0,0
+cz.seznam.mapy_26.2.1-26220100_1arch_1dpi_24lang_dc3787e0ff53d2b7cfa020cbbc57c372_apkmirror.com_base.apk,cz.seznam.mapy,0,,0,0,0,0,64082,18,7,0,0,1,0,0,0,0,1,1,0,1,1,1,0,1,0,0,0,0,1,0,0
+com.google.android.carassistant_13.1.476.RC01.tng.release.auto-800961405_minAPI29(arm64-v8a)(nodpi)_apkmirror.com.apk,com.google.android.carassistant,0,,0,0,0,1,146365,129,12,0,1,1,0,1,1,0,1,1,1,1,0,0,1,1,1,0,0,0,1,0,0
+"com.qustodio.qustodioapp_180.79.0.2-family-1807900_minAPI28(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.qustodio.qustodioapp,1,,0,0,0,1,96358,28,8,0,0,1,1,0,0,0,0,1,0,0,0,0,1,1,0,0,0,1,1,1,0
+com.google.android.apps.translate_10.8.48.881318520.3-release-700563762_minAPI26(arm64-v8a)(nodpi)_apkmirror.com.apk,com.google.android.apps.translate,0,,0,0,0,1,146961,18,7,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,1,0,0
+"ws.coverme.im_2.8.78-2008078_minAPI21(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",ws.coverme.im,0,,0,0,0,1,22280,36,8,1,1,1,0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+com.cliffweitzman.speechify2_5.39.6727-5396727_4arch_7dpi_24lang_f1db4977a789d3d4ae22466eb48525ee_apkmirror.com_base.apk,com.cliffweitzman.speechify2,0,,0,0,0,0,258450,29,6,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.frankygoes.myapks_4.2-29_minAPI9(nodpi)_apkmirror.com.apk,com.frankygoes.myapks,0,,1,0,0,0,0,4,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+com.zhiliao.musically.livewallpaper_35.4-354_7dpi_25lang_8feat_527f8fec6b7425ef29f34d36f07f4a31_apkmirror.com_base.apk,com.zhiliao.musically.livewallpaper,0,,0,0,0,0,106,5,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+org.telegram.messenger_12.5.1-65802_4arch_7dpi_24lang_d94323c6828d37add1d449e4cff69e2f_apkmirror.com_base.apk,org.telegram.messenger,0,,0,0,0,0,1011348,71,13,1,1,1,1,0,0,0,1,1,1,1,0,0,1,1,0,1,1,0,1,0,0
+com.lsdroid.cerberus.kids_1.2.9-331290_minAPI22(nodpi)_apkmirror.com.apk,com.lsdroid.cerberus.kids,1,,0,0,0,0,3606,17,7,0,0,1,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,0,1,1,0
+"com.samsung.android.spay_6.4.42-644200222_minAPI30(arm64-v8a,armeabi)(nodpi)_apkmirror.com.apk",com.samsung.android.spay,0,,0,0,0,1,342721,237,13,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+"gg.gamerlink.gamerlink_5.0.31-6000122_minAPI21(arm64-v8a,armeabi,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",gg.gamerlink.gamerlink,0,,0,0,0,1,22695,39,6,1,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.hammersecurity_25.6.31-419_4arch_7dpi_24lang_02f1b364307e16f23c8d8a6db142de57_apkmirror.com_base.apk,com.hammersecurity,1,,0,0,0,0,131270,43,15,1,1,1,1,0,0,0,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1
+com.google.android.apps.kids.familylinkhelper_1.135.0.2025w42.819242325.trampoline-1017177_minAPI23(nodpi)_apkmirror.com.apk,com.google.android.apps.kids.familylinkhelper,1,,0,0,0,0,1709,8,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.google.android.gms_26.09.31_(040300-877989800)-260931000_1dpi_24lang_20fdbaf8b5577e1afe557f31db12ad2b_apkmirror.com_base.apk,com.google.android.gms,1,,0,0,0,1,222891,354,18,1,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,0,1,1,0,1
+com.jrustonapps.myearthquakealerts_26.1.3-331_4arch_7dpi_24lang_0775274ef22bc1312108a6a81a2e656b_apkmirror.com_base.apk,com.jrustonapps.myearthquakealerts,0,,0,0,0,0,18081,19,7,0,0,1,0,0,0,0,1,1,1,0,0,0,1,1,0,0,0,0,1,0,0
+ai.x.grok_1.1.40-release.02-11140002_4arch_7dpi_25lang_99e30c82a9c550615fa291cbf31aebfb_apkmirror.com_base.apk,ai.x.grok,0,,0,0,0,0,34567,37,9,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,1,0,0,1,0,0
+"com.overdrive.mobile.android.libby_9.2.0-920000_minAPI25(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.overdrive.mobile.android.libby,0,,0,0,0,1,6164,16,4,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,0,0
+"jp.co.sony.hes.home_3.0.1-30001002_minAPI26(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",jp.co.sony.hes.home,0,,0,0,0,1,58728,20,9,1,1,1,0,1,0,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0
+com.tiktok.lite.go_42.9.53-420953_2arch_7dpi_24lang_6feat_e4f0414b416219c115b157e42d4491cd_apkmirror.com_base.apk,com.tiktok.lite.go,0,,0,0,0,0,10955,54,6,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+"com.kidslox.app_9.6.0-55138_minAPI26(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.kidslox.app,1,,0,0,0,1,976636,42,12,1,0,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,0,1
+com.readdle.spark_3.16.4-31604246_2arch_7dpi_9lang_10dce031f1b71ea8391fbf5f48c647b4_apkmirror.com_base.apk,com.readdle.spark,0,,0,0,0,0,138555,28,3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0
+com.flashget.parentalcontrol_1.3.8.2-103080201_4arch_2cc9f4ea5f52de3136b29e8e36ab663f_apkmirror.com_base.apk,com.flashget.parentalcontrol,1,,0,0,0,0,96916,24,8,1,0,1,1,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+"com.babycenter.pregnancytracker_6.03.0-207_minAPI26(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.babycenter.pregnancytracker,0,,0,0,0,1,224434,21,4,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.citymapper.app.release_11.47.1-1147080_4arch_7dpi_11lang_d4c6a1472a6cba9502c2e93c964ce560_apkmirror.com_base.apk,com.citymapper.app.release,0,,0,0,0,0,135929,31,9,0,0,1,0,0,0,0,1,1,1,1,1,1,0,1,0,0,0,0,1,0,0
+"com.sec.android.app.popupcalculator_12.5.00.24-1250024000_minAPI36(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",com.sec.android.app.popupcalculator,0,,0,0,0,1,6384,12,3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0
+com.easilydo.mail_1.69.0-634_2arch_7dpi_1feat_d479ddc110369be5ee8ac26ca5b83fd9_apkmirror.com_base.apk,com.easilydo.mail,0,,0,0,0,0,79020,48,6,1,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.google.android.inputmethod.latin_16.8.4.867538971-release-armeabi-v7a-175666557_minAPI26(armeabi-v7a)(nodpi)_apkmirror.com.apk,com.google.android.inputmethod.latin,0,,0,0,0,1,109014,14,4,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.tplink.tether_4.12.212-752_2arch_7dpi_d5158565d4cc1054e93aee39768fbca8_apkmirror.com_base.apk,com.tplink.tether,0,,0,0,0,0,509404,30,9,1,0,1,1,1,0,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0
+"com.verizon.mips.services_1.0.242.0-242_minAPI24(arm64-v8a,armeabi-v7a,x86,x86_64)(nodpi)_apkmirror.com.apk",com.verizon.mips.services,0,,0,0,0,1,4294,95,14,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,0,0,0,1,0,0
+com.zzkko_14.3.1-2586_4arch_7dpi_4145feecc385c7945569ffe2b17fd2f5_apkmirror.com_base.apk,com.zzkko,0,,0,0,0,0,38544,36,10,1,0,1,1,0,0,0,1,1,0,0,0,0,1,1,1,0,0,1,1,0,0
+com.funbit.android_1.302-2020000502_2arch_7dpi_24lang_34caeabb90481b4357fbb8ec888c2bfb_apkmirror.com_base.apk,com.funbit.android,0,,0,0,0,0,43404,39,11,1,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0
+ee.mtakso.client_CA.201.0-4090_1arch_1dpi_6lang_066dad6e8a3e8d66cef0ad2429f1def6_apkmirror.com_base.apk,ee.mtakso.client,0,,0,0,0,0,111847,42,12,1,1,1,0,1,0,0,1,1,1,1,0,0,1,1,0,1,0,0,1,0,0
+com.twitter.android_11.73.0-beta.1-311730101_1arch_1dpi_2lang_f6bb6747a081515593fd7ef1f5ad93f9_apkmirror.com_base.apk,com.twitter.android,0,,0,0,0,0,147263,68,10,1,1,1,1,0,0,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,0
+com.google.chromeremotedesktop_TWA_1.5.2-1000000016_3dpi_24lang_5067bdbb3406157de4b2b68452616aca_apkmirror.com_base.apk,com.google.chromeremotedesktop,1,,0,0,0,0,2358,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+com.whatnot_mobile_26.11.6-260110614_4arch_7dpi_3lang_3a09a02ba93abad7fc2de6729cc7a30a_apkmirror.com_base.apk,com.whatnot_mobile,0,,0,0,0,0,157672,33,8,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.symantec.familysafety_7.9.6.16-6041_minAPI26(nodpi)_apkmirror.com.apk,com.symantec.familysafety,1,,0,0,0,0,35341,46,10,0,0,1,1,0,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0
+org.thunderdog.challegram_0.28.3.1785-legacy-armeabi-v7a-1785001_minAPI16_maxAPI20(armeabi-v7a)(nodpi)_apkmirror.com.apk,org.thunderdog.challegram,0,,0,0,0,1,38754,58,12,1,1,1,1,0,1,0,1,1,1,1,0,0,0,1,0,1,0,0,1,0,0
+com.vzw.smarthome.prod.release_1.0.101-65637_minAPI15(nodpi)_apkmirror.com.apk,com.vzw.smarthome.prod.release,0,,0,0,0,0,5199,10,5,0,0,1,0,0,0,0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0
+com.google.android.apps.authenticator2_7.0-7001028_minAPI23(nodpi)_apkmirror.com.apk,com.google.android.apps.authenticator2,0,,0,0,0,0,7731,7,3,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.p1.mobile.putong_7.1.0-2710010_minAPI24(armeabi-v7a)(nodpi)_apkmirror.com.apk,com.p1.mobile.putong,0,,0,0,0,1,130394,113,11,1,1,1,1,0,1,0,1,1,0,0,0,0,1,1,1,0,0,0,1,0,0
+com.glasswire.android_3.0.396r-396_4arch_7dpi_26lang_183c1c0fe8870d8521a5fe4661eba70b_apkmirror.com_base.apk,com.glasswire.android,0,,0,0,0,0,24352,13,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0
+com.smartwidgetlabs.chatgpt_8.260309.3-1299_4arch_7dpi_5e05077c8d46af81fc77156b44885041_apkmirror.com_base.apk,com.smartwidgetlabs.chatgpt,0,,0,0,0,0,259062,29,5,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0
+io.strongapp.strong_v6.1.12-rc.4-601062_1arch_1dpi_880bec8555cc1dc5878e22dc7a1dba40_apkmirror.com_base.apk,io.strongapp.strong,0,,0,0,0,0,9382,20,3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0
+com.spocky.projengmenu_4.68-82_2arch_1dpi_0bd5a7f57303a4bac423d09ca6584b41_apkmirror.com_base.apk,com.spocky.projengmenu,0,,0,0,0,0,27343,19,5,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,1
+com.google.android.apps.bard_1.0.795460806-272_4arch_7dpi_37lang_de65d93eaabd550c86167763b8fd47ad_apkmirror.com_base.apk,com.google.android.apps.bard,0,,0,0,0,0,4259,3,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.yahoo.mobile.client.android.mail_10.4.0-1917030_4arch_3dpi_20lang_7d7a752cdb7f19e6535b5be454d32045_apkmirror.com_base.apk,com.yahoo.mobile.client.android.mail,0,,0,0,0,0,359875,32,7,1,0,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,0,0
+com.ReadTheTextForMe_1.0.28-28_minAPI21(nodpi)_apkmirror.com.apk,com.ReadTheTextForMe,0,,0,0,0,0,277,12,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0
+com.camerasideas.instashot_2.196.1529-1529_2arch_7dpi_a89b75a2f68966d16a7c7c12931d092b_apkmirror.com_base.apk,com.camerasideas.instashot,0,,0,0,0,0,68283,27,4,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0
+"com.samsung.android.service.stplatform_2.3.08.9-230809000_minAPI31(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk",com.samsung.android.service.stplatform,0,,0,0,0,1,39680,46,8,0,0,0,0,1,0,1,0,1,1,0,0,0,1,1,1,0,0,0,1,0,0
+com.didiglobal.passenger_7.6.41-1207064101_1arch_2dpi_6b8a5676ef3f41365a92fad48f762fc1_apkmirror.com_base.apk,com.didiglobal.passenger,0,,0,0,0,0,237412,49,12,1,1,1,1,1,0,0,1,1,0,1,0,0,1,1,1,0,0,0,1,0,0
