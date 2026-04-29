@@ -1,0 +1,142 @@
+[
+  {
+    "name": "android.permission.CAMERA",
+    "description": "Allows access to the device camera. High-risk for covert surveillance especially when combined with a foreground service, allowing for access even switching to another application."
+  },
+  {
+    "name": "android.permission.RECORD_AUDIO",
+    "description": "Allows recording of audio from the microphone, a functionality that can trivially be repurposed to allow for surveillance."
+  },
+  {
+    "name": "android.permission.WAKE_LOCK",
+    "description": "Prevents the device CPU from sleeping. While common in legitimate use cases (e.g. video players), in dual-use contexts it facilitates continuous background processing which may be done without user awareness."
+  },
+  {
+    "name": "android.permission.SYSTEM_ALERT_WINDOW",
+    "description": "Allows drawing overlays on top of other applications, a classic vector for UI redressing attacks (tapjacking) and hiding status indicators from the user."
+  },
+  {
+    "name": "android.permission.BLUETOOTH_ADMIN",
+    "description": "Enables control over Bluetooth settings and discovery. Legacy permission largely deprecated in modern Android versions (Android 12+), with limited functionality remaining."
+  },
+  {
+    "name": "android.permission.BLUETOOTH_SCAN",
+    "description": "Allows scanning for nearby Bluetooth devices (BLE discovery). Can be used as a proximity-based side channel for location inference."
+  },
+  {
+    "name": "android.permission.WRITE_SETTINGS",
+    "description": "Allows modification of system settings (e.g., screen timeout, volume) however it is not very powerful. Often used by parental control apps but can mask device behavior changes."
+  },
+  {
+    "name": "android.permission.WRITE_SECURE_SETTINGS",
+    "description": "Grants access to protected system settings (requires root, ADB, or system signature). Extremely powerful and not available to third-party apps."
+  },
+  {
+    "name": "android.permission.INSTALL_PACKAGES",
+    "description": "Allows silent installation of applications. Highly restricted and only available to system-level or privileged apps."
+  },
+  {
+    "name": "android.permission.REQUEST_INSTALL_PACKAGES",
+    "description": "Allows an app to request installation of other packages via user approval flow. Can be abused for staged malware delivery."
+  },
+  {
+    "name": "android.permission.BIND_DEVICE_ADMIN",
+    "description": "Allows an app to act as a device administrator by interacting with the Android Device Administration API. It allows for screen locking, preventing uninstallation and device wiping. Deprecated with Android 9.0."
+  },
+  {
+    "name": "android.permission.BIND_ACCESSIBILITY_SERVICE",
+    "description": "Allows declaration of an accessibility service that can observe and interact with the UI. Once enabled by the user in settings, it can read screen content and simulate input actions."
+  },
+  {
+    "name": "android.permission.ACCESS_COARSE_LOCATION",
+    "description": "Provides approximate location via network (Wi-Fi/Cell tower). Used for coarse tracking and location inference, easily repurposed for real-time surveillance."
+  },
+  {
+    "name": "android.permission.ACCESS_FINE_LOCATION",
+    "description": "Provides precise GPS location. Enables real-time tracking capabilities."
+  },
+  {
+    "name": "android.permission.ACCESS_BACKGROUND_LOCATION",
+    "description": "Allows continuous location access in the background even when the app is not actively in use."
+  },
+  {
+    "name": "android.permission.FOREGROUND_SERVICE_LOCATION",
+    "description": "Allows location access within a foreground service, which shows in a notification. Does not grant location permission itself but enables persistent tracking when combined with location access."
+  },
+  {
+    "name": "android.permission.ACTIVITY_RECOGNITION",
+    "description": "Allows detection of physical movement (walking, driving, cycling)."
+  },
+  {
+    "name": "com.google.android.gms.permission.ACTIVITY_RECOGNITION",
+    "description": "Google Play Services variant for activity detection on devices where Google Play Services implementation is required."
+  },
+  {
+    "name": "android.permission.ACCESS_WIFI_STATE",
+    "description": "Allows access to Wi-Fi connection state and SSID information. Can be used for coarse indoor location inference using signal strength and SSIDs."
+  },
+  {
+    "name": "android.permission.NEARBY_WIFI_DEVICES",
+    "description": "Allows scanning nearby Wi-Fi devices without requiring full location permission (Android 13+). Can be used for proximity inference."
+  },
+  {
+    "name": "android.permission.ACCESS_NETWORK_STATE",
+    "description": "Allows monitoring of network connectivity state, which can provide extremely coarse location inference based on the device connection made (Wi-Fi, mobile data, none)."
+  },
+  {
+    "name": "android.permission.CHANGE_WIFI_STATE",
+    "description": "Allows enabling/disabling Wi-Fi. Can be used to force reconnections, especially for evil twin attacks."
+  },
+  {
+    "name": "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+    "description": "Enables microphone access as a foreground service (meaning the microphone is still accessed while the app appears to be minimised). This does show up in a notification. Requires microphone permission separately for actual audio capture."
+  },
+  {
+    "name": "android.permission.FOREGROUND_SERVICE_CAMERA",
+    "description": "Enables camera access as a foreground service (meaning the camera is still accessed while the app appears to be minimised). This does show up in a notification. Requires camera permission separately for actual capture."
+  },
+  {
+    "name": "android.permission.ACCESS_NOTIFICATION_POLICY",
+    "description": "Allows modification of Do Not Disturb settings, can be used to suppress or allow notifications selectively."
+  },
+  {
+    "name": "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
+    "description": "Allows reading all system notifications including messages from messaging apps (WhatsApp, SMS previews, etc.). Requires explicit user enabling in settings."
+  },
+  {
+    "name": "android.permission.RECEIVE_SMS",
+    "description": "Allows receiving and reading SMS messages including one-time passwords (OTP)."
+  },
+  {
+    "name": "android.permission.READ_MEDIA_AUDIO",
+    "description": "Allows access to audio files stored on device media storage."
+  },
+  {
+    "name": "android.permission.READ_MEDIA_IMAGES",
+    "description": "Allows access to image files stored on device media storage."
+  },
+  {
+    "name": "android.permission.READ_MEDIA_VIDEO",
+    "description": "Allows access to video files stored on device media storage."
+  },
+  {
+    "name": "android.permission.READ_CALL_LOG",
+    "description": "Allows access to call history metadata including numbers and timestamps."
+  },
+  {
+    "name": "android.permission.ACCESS_MEDIA_LOCATION",
+    "description": "Allows extraction of geolocation metadata embedded in media files (photos/videos)."
+  },
+  {
+    "name": "android.permission.RECEIVE_BOOT_COMPLETED",
+    "description": "Allows application to start automatically after device reboot, supporting persistence mechanisms."
+  },
+  {
+    "name": "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+    "description": "Allows exemption from Android power-saving restrictions, enabling more persistent background execution."
+  },
+  {
+    "name": "android.permission.REQUEST_DELETE_PACKAGES",
+    "description": "Allows requesting uninstallation of applications with user confirmation per action."
+  }
+]
