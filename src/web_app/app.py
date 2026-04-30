@@ -11,7 +11,13 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 
 from apk_analysis.APK_analyser import APK, APKanalyser
-from utils.config import S_KEY, MODELS_FOLDER, UPLOAD_FOLDER, JSON_PATH
+from utils.config import (
+    S_KEY,
+    MODELS_FOLDER,
+    UPLOAD_FOLDER,
+    JSON_PATH,
+    M_PACKAGE_LOCATION,
+)
 
 app = Flask(__name__)
 app.secret_key = S_KEY
@@ -70,16 +76,16 @@ def load_model_from_disk(model_name):
     if not os.path.exists(full_path):
         raise FileNotFoundError("Could not find model file: " + full_path)
 
-    models_src = "/mnt/shared/src/machine_learning"  # adjust to wherever your models/ package lives
+    models_src = M_PACKAGE_LOCATION  # pyright: ignore
     if models_src not in sys.path:
-        sys.path.insert(0, models_src)
+        sys.path.insert(0, models_src)  # pyright: ignore
 
     loaded = joblib.load(full_path)
     return loaded
 
 
 def get_sus_perms_list():
-    """loads the suspicious permissions list from JSON, returning an empty list if the suspicious permissions JSON is not found. Means that the perm column will nbe empty"""
+    """loads the suspicious permissions list from JSON file, returns an empty list if the JSON is not found. Means that the perm column will be empty"""
     perms = []
 
     json_exists = os.path.exists(JSON_PATH)  # pyright: ignore
