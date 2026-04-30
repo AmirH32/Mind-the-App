@@ -1,6 +1,7 @@
 src/apk_discovery_tool/utils/.env
 src/machine_learning/utils/.env
 src/apk_analysis/utils/.env
+src/web_app/utils/.env
 __pycache__/
 *.pyc
 *.pyo

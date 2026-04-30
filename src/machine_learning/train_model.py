@@ -22,7 +22,7 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import List, Tuple, Type, Dict, Optional
+from typing import List, Tuple, Type, Dict
 
 from models.base_model import BaseModel
 from models.grm import GradientBoostingModel
@@ -163,8 +163,8 @@ class APKMalwareDetector:
             )
 
     # TODO
-    def train_consensus(self, model_types: List[str]) -> ConsensusModel:
-        """Construct models for the consensus model and then fit it"""
+    def train_consensus(self, model_types: List[str]):
+        """Construct models for both consensus models and then fit it"""
         if isinstance(self.X_train, pd.DataFrame) and isinstance(
             self.y_train, pd.Series
         ):
@@ -176,12 +176,16 @@ class APKMalwareDetector:
                 models.append(model)
 
             # Create a consensus model instance that takes the trained models and uses soft voting (can be changed to hard if needed)
-            consensus = ConsensusModel(models, voting="soft")
+            consensus_hard = ConsensusModel(models, voting="hard")
             # Fit the consensus model to the training data
-            consensus.fit(self.X_train, self.y_train)
+            consensus_hard.fit(self.X_train, self.y_train)
             # Add the consensus model to the dictionary of trained models
-            self.trained_models["consensus"] = consensus
-            return consensus
+            self.trained_models["consensus_hard"] = consensus_hard
+
+            consensus_soft = ConsensusModel(models, voting="soft")
+            consensus_soft.fit(self.X_train, self.y_train)
+            self.trained_models["consensus_soft"] = consensus_soft
+
         else:
             raise ValueError(
                 "Training data not properly set. Check the data loading and splitting steps."
@@ -260,7 +264,7 @@ class APKMalwareDetector:
 
         for name, model in self.trained_models.items():
             # Get feature importance for each model that supports it
-            if name != "consensus" and hasattr(model, "get_feature_importance"):
+            if "consensus" not in name and hasattr(model, "get_feature_importance"):
                 importance_df = model.get_feature_importance(self.feature_names)
                 # Change the underscore for space and makes it title case
                 if importance_df is not None:
@@ -318,12 +322,13 @@ class APKMalwareDetector:
                 print(f"Model file not found: {model_path}")
 
         if use_cons:
-            cons_path = os.path.join(self.output_dir, "consensus_model.pkl")
-            if os.path.exists(cons_path):
-                self.trained_models["consensus"] = joblib.load(cons_path)
-                print("Loaded consensus model.")
-            else:
-                print(f"Consensus model file not found: {cons_path}")
+            for mode in ["hard", "soft"]:
+                cons_path = os.path.join(self.output_dir, f"consensus_{mode}_model.pkl")
+                if os.path.exists(cons_path):
+                    self.trained_models[f"consensus_{mode}"] = joblib.load(cons_path)
+                    print(f"Loaded {mode} consensus model.")
+                else:
+                    print(f"Consensus model file not found: {cons_path}")
 
     def run(
         self,
@@ -360,8 +365,10 @@ class APKMalwareDetector:
             if all_models:
                 print("\nTraining multiple models:")
                 for model_type in model_types:
-                    print(f"\n- {model_type}")
-                    self.train_single_model(model_type)
+                    # Don't retrain models already trained by the consensus model
+                    if model_type not in self.trained_models:
+                        print(f"\n- {model_type}")
+                        self.train_single_model(model_type)
 
             # Save the models
             self.save_models()

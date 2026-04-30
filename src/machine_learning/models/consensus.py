@@ -82,7 +82,7 @@ class ConsensusModel:
             for pred, weight in zip(predictions, self.weights):
                 # for both possible classes (benign and dual use) we check if the prediction is equal to the class across all samples for that particular model and we iterate to cover all models. We check if it is equal and then multiply by the weight of that model using vector operations.
                 for i in range(2):  # For binary classification
-                    weighted_votes[:, i] += int((pred == i)) * weight
+                    weighted_votes[:, i] += ((pred == i).astype(int)) * weight
             # Finds the index of the largest value in the each row and returns that
             # Perhaps we can add method to return the confidence of the prediction as well
             return np.argmax(weighted_votes, axis=1)
@@ -100,7 +100,7 @@ class ConsensusModel:
             # Finds the largest value in each row and returns the index of the column corresponding to that value which will be 0 for benign and 1 for dual use.
             return np.argmax(weighted_probs, axis=1)
 
-    def precit_probs(self, X: pd.DataFrame) -> np.ndarray:
+    def predict_probs(self, X: pd.DataFrame) -> np.ndarray:
         """Returns confidence/prediction probabilities for each sample"""
         if self.weights is None:
             raise ValueError("Model weights not calculated. Call fit() first.")
@@ -116,7 +116,7 @@ class ConsensusModel:
             for pred, weight in zip(predictions, self.weights):
                 # for both possible classes (benign and dual use) we check if the prediction is equal to the class across all samples for that particular model and we iterate to cover all models. We check if it is equal and then multiply by the weight of that model using vector operations.
                 for i in range(2):  # For binary classification
-                    weighted_votes[:, i] += int((pred == i)) * weight
+                    weighted_votes[:, i] += ((pred == i).astype(int)) * weight
             # Finds the index of the largest value in the each row and returns that
             # Perhaps we can add method to return the confidence of the prediction as well
             return weighted_votes

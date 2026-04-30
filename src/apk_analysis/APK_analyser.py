@@ -29,11 +29,20 @@ import os
 import re
 from pathlib import Path
 from typing import List, Tuple
-from utils.config import (
-    APK_DIR as CFG_APK_DIR,
-    OUTPUT_CSV as CFG_OUTPUT_CSV,
-    JSON_PATH as CFG_JSON_PATH,
-)
+
+try:
+    from .utils.config import (
+        APK_DIR as CFG_APK_DIR,
+        OUTPUT_CSV as CFG_OUTPUT_CSV,
+        JSON_PATH as CFG_JSON_PATH,
+    )
+except ImportError:
+    from utils.config import (
+        APK_DIR as CFG_APK_DIR,
+        OUTPUT_CSV as CFG_OUTPUT_CSV,
+        JSON_PATH as CFG_JSON_PATH,
+    )
+
 
 HEAD_CHUNK = 512 * 1024  # 512 KB
 
@@ -456,7 +465,20 @@ class APK:
         for receiver in self._receivers:
             filters = self._apk.get_intent_filters("receiver", receiver)
             for filter_values in filters.values():
-                if SUSPICIOUS_RECEIVER_ACTIONS & set(filter_values):
+                if not isinstance(filter_values, (list, set)):
+                    # androguard returned unexpected type for this manifest entry
+                    print(
+                        f"[WARNING]: unexpected filter_values type {type(filter_values)} for receiver {receiver} for {self._package_name}, skipping"
+                    )
+                    continue
+                str_values = []
+
+                # Ensure the list contains just strings
+                for v in filter_values:
+                    if isinstance(v, str):
+                        str_values.append(v)
+
+                if SUSPICIOUS_RECEIVER_ACTIONS & set(str_values):
                     score += 2
                 if any(kw.lower() in receiver.lower() for kw in KEYWORDS):
                     score += 1
