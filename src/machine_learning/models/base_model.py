@@ -107,10 +107,12 @@ class BaseModel(ABC):
         y_pred = self.predict(X_test)
 
         # Gets predicted probability of dual use if model can get prediction probs, since first column is prob of class 'benign'
-        if hasattr(self.model, "predict_probabilities"):
+        if hasattr(self.model, "predict_proba"):
             y_proba = self.predict_probs(X_test)[:, 1]
         else:
             y_proba = None
+
+        print(y_proba)
 
         # Calculate metrics for both classes and weight by class sample size
         metrics = {

@@ -18,7 +18,13 @@ import pandas as pd
 import numpy as np
 from .base_model import BaseModel
 from typing import List
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+)
 
 from sklearn.model_selection import cross_val_score
 
@@ -137,10 +143,12 @@ class ConsensusModel:
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, float]:
         """Evaluate consensus model"""
         y_pred = self.predict(X_test)
+        y_proba = self.predict_probs(X_test)[:, 1]  # Probability of being dual-use
 
         return {
             "accuracy": accuracy_score(y_test, y_pred),
             "precision": precision_score(y_test, y_pred, average="weighted"),
             "recall": recall_score(y_test, y_pred, average="weighted"),
             "f1": f1_score(y_test, y_pred, average="weighted"),
+            "roc_auc": roc_auc_score(y_test, y_proba),
         }

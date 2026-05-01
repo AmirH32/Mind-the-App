@@ -1,54 +1,97 @@
+<!-- about.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>About &mdash; APK Risk Analyser</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <title>About - APK Risk Analyser</title>
+
+  <!-- Bootstrap kept from CDN for convenience -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
   <style>
-    body { background-color: #f5f5f5; padding-top: 40px; }
-    .main-box {
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+    /* basic page setup */
+    body {
+      background: #f5f5f5;
+      padding-top: 40px;
+      margin: 0;
+    }
+
+    /* main content area */
+    .wrapper-box {
       max-width: 650px;
-      margin: 0 auto;
+      margin-left: auto;
+      margin-right: auto;
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      padding: 30px;
+    }
+
+    /* footer text */
+    .footer-text {
+      text-align: center;
+      margin-top: 30px;
+      color: grey;
+      font-size: 0.8rem;
     }
   </style>
 </head>
+
 <body>
-<div class="main-box">
-  <h2>About This Tool</h2>
-  <p>
-    This tool was built as part of my Part II Dissertation: <em>Mind the App: Detecting Dual-Use Applications</em>.
-  </p>
-  <p>
-    It performs static analysis on uploaded Android APK files using Androguard, extracts a set of
-    features (permissions, no. of hardcoded URLs etc) and then passes those features
-    into a pre-trained machine learning model to produce a risk score.
-  </p>
 
-  <h5 style="margin-top:20px;">How to use it</h5>
-  <ol>
-    <li>Put your trained <code>.pkl</code> model files into the folder your <code>.env</code> file points to.</li>
-    <li>Make sure <code>suspicious_permissions.json</code> is in the location specified in your <code>.env</code> file.</li>
-    <li>Upload an APK and pick a model</li>
-    <li>Wait for the analysis to finish (big apps can take a few minutes)</li>
-  </ol>
+  <!-- central information panel -->
+  <div class="wrapper-box">
 
-  <h5 style="margin-top:20px;">Models Available</h5>
-  <ul>
-    <li><strong>random_forest_model.pkl</strong> &mdash; Random Forest classifier</li>
-    <li><strong>logistic_model.pkl</strong> &mdash; Logistic Regression</li>
-    <li><strong>svm_model.pkl</strong> &mdash; Support Vector Machine</li>
-    <li><strong>gradient_boosting_model.pkl</strong> &mdash; Gradient Boosting</li>
-    <li><strong>consensus_model.pkl</strong> &mdash; Ensemble</li>
-  </ul>
+    <h2>About This Tool</h2>
 
-  <a href="/" class="btn btn-outline-secondary btn-sm" style="margin-top:10px;">&#8592; Back</a>
-</div>
-<div style="text-align:center; margin-top:30px; color:grey; font-size:0.8rem;">
-    Amir Hassanali &mdash; Dissertation 2025
-</div>
+    <p>
+      This tool was developed for my Part II Dissertation project: 
+      <em>Mind the App: Detecting Dual-Use Applications</em>.
+    </p>
+
+    <p>
+      The system performs static analysis on uploaded Android APK files. It uses Androguard to perform static analysis, gathers a number of features such as permissions, URLs and metadata, and then passes these values into the user-selected trained machine learning model.
+    </p>
+
+    <p>
+      The final output is a predicted risk score intended to help identify
+      potentially suspicious applications.
+    </p>
+
+    <!-- usage notes -->
+    <h5 style="margin-top:20px;">How To Use</h5>
+
+    <ol>
+      <li>Place trained model <code>.pkl</code> files in the model folder that your <code>src/web_app/utils/.env</code> file points to.</li>
+      <li>Ensure there is a <code>suspicious_permissions.json</code> in the location specified by your <code>.env</code> file.</li>
+      <li>Upload an APK file.</li>
+      <li>Select one available model.</li>
+      <li>Wait for processing to complete.</li>
+    </ol>
+
+    <!-- list of common models -->
+    <h5 style="margin-top:20px;">Example Models</h5>
+
+    <ul>
+      <li><strong>random_forest_model.pkl</strong> - Random Forest</li>
+      <li><strong>logistic_model.pkl</strong> - Logistic Regression</li>
+      <li><strong>svm_model.pkl</strong> - Support Vector Machine</li>
+      <li><strong>gradient_boosting_model.pkl</strong> - Gradient Boosting</li>
+      <li><strong>consensus_hard_model.pkl</strong> - Ensemble Voting (discrete output)</li>
+      <li><strong>consensus_soft_model.pkl</strong> - Ensemble Voting (probabilistic output)</li>
+    </ul>
+
+    <!-- back button -->
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+      Back
+    </a>
+
+  </div>
+
+  <div class="footer-text">
+    Amir Hassanali - Dissertation 2025
+  </div>
+
 </body>
 </html>
