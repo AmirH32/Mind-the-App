@@ -71,7 +71,11 @@ def get_available_models():
 
 def load_model_from_disk(model_name):
     """Load a pkl model, using joblib because thats what train_model.py saves with"""
-    full_path = os.path.join(MODELS_FOLDER, model_name)
+    # For hard consensus model remove the part in parenthesis
+    if "DISCRETE" in model_name:
+        model_name = model_name.split(" ")[0]
+
+    full_path = os.path.join(MODELS_FOLDER, model_name)  # pyright: ignore
 
     if not os.path.exists(full_path):
         raise FileNotFoundError("Could not find model file: " + full_path)
