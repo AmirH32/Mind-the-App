@@ -22,26 +22,14 @@ from scrapers.base_scraper import APKResult
 import cloudscraper  # scraper to bypass cloudflare
 from bs4 import BeautifulSoup
 from requests import Response
-import logging
 import random
 import time
 import re
 
 
-logger = logging.getLogger(__name__)
-
-
 class APKMirrorScraper(BaseAPKScraper):
     """
     Scraper for APKMirror.com website utilising cloudscraper to bypass Cloudflare CAPTCHAs.
-
-    Attributes:
-        timeout (int): Timeout for HTTP requests in seconds.
-        user_agent (Optional[str]): Custom User-Agent string for HTTP requests.
-        max_results (int): Maximum number of search results to return.
-        rate_limit_delay (float): Delay between requests to avoid rate limiting.
-        cached_search (str): Cached HTML content of the last search results page.
-        apk_counter (int): Counter to track the number the current app row, if apk download link is not found.
     """
 
     def __init__(
@@ -50,24 +38,32 @@ class APKMirrorScraper(BaseAPKScraper):
         user_agent: Optional[str] = None,
         max_results: int = 10,
     ):
-        # Use default rate_limit_delay of 7 seconds as the lower limit from the base class
+        # Use default rate_limit_delay of 10 seconds as the lower limit from the base class
         super().__init__(timeout, user_agent, max_results)
 
+        # Uses APK mirror for searching
         self.base_url = "https://www.apkmirror.com"
         self.search_url = f"{self.base_url}/?post_type=app_release&searchtype=apk&s="
 
+        # Use cloudscraper to bypass Cloudflare bot protection
         self.scraper = cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "windows", "mobile": False}
         )
+
+        # Cache the last search to avoid researching and making another request (susceptible to rate limit)
         self.cached_search = ""
+
+        # Counter of how many APKs processed for current search
         self.apk_counter = 0
 
     def safe_get(self, url: str) -> Optional[Response]:
         """Request wrapper to prevent blocking"""
         retries = 5
         for attempt in range(retries):
+            # use cloud scraper to send GET request to URL
             response = self.scraper.get(url, headers=self.headers, timeout=self.timeout)
 
+            # If response successful sleep before returning response
             if response.status_code == 200:
                 time.sleep(
                     random.uniform(self.rate_limit_delay, self.rate_limit_delay + 10)
@@ -100,9 +96,11 @@ class APKMirrorScraper(BaseAPKScraper):
         self._rate_limit()
         print(f"Query: {query}")
 
+        # Construct the search URL since we can pass the query through URL manipulation
         search_url = self.search_url + quote_plus(query)
 
         try:
+            # If this is the first APK we don't have the app result page cached just yet so we need to cache it
             if self.apk_counter == 0:
                 response = self.safe_get(search_url)
 
@@ -112,10 +110,11 @@ class APKMirrorScraper(BaseAPKScraper):
 
                 self.cached_search = response.text
 
+            # Otherwise we have it cached, this way we optimise to decrease number of requests and possible throttling
             return self._parse_search_results(self.cached_search)
 
         except Exception as e:
-            logger.error(f"Error searching APKMirror: {e}")
+            print(f"Error searching APKMirror: {e}")
             return None
 
     def _extract_base_name(self, title: str) -> str:
@@ -133,41 +132,29 @@ class APKMirrorScraper(BaseAPKScraper):
         return " ".join(parts)
 
     def _parse_search_results(self, html: str) -> Optional[APKResult]:
-        """Parses the HTML content of the search results page.
-
-        Args:
-            html (str): HTML content of the search results page.
-
-        Returns:
-            List[APKResult]: List of APKResult objects parsed from the page.
-        """
+        """Parses the HTML content of the search results page."""
         soup = BeautifulSoup(html, "html.parser")
         # Find all app rows
         app_rows = soup.find_all("div", {"class": "appRow"})
 
+        # Ensure we haven't gone past all returned search results
         if self.apk_counter >= len(app_rows):
             print("No more app rows to process.")
             return None
         app_row = app_rows[self.apk_counter]
         try:
+            # Parse the current row to find the download link
             result = self._parse_app_row(app_row)
             # Avoids duplicates based on base app name
             if result is not None:
                 return result
         except Exception as e:
-            logger.debug(f"Error parsing app row: {e}")
+            print(f"Error parsing app row: {e}")
 
         return None
 
     def _parse_app_row(self, app_row) -> Optional[APKResult]:
-        """Parses a single app row element to extract app details.
-
-        Args:
-            app_row (bs4.element.Tag): BeautifulSoup tag representing an app row.
-
-        Returns:
-            Optional[APKResult]: APKResult object if parsing is successful; otherwise, None.
-        """
+        """Parses a single app row element to extract app details."""
         try:
             # Extract title and link
             title_elem = app_row.find("h5", {"class": "appRowTitle"})
@@ -179,6 +166,7 @@ class APKMirrorScraper(BaseAPKScraper):
             if not link_elem:
                 return None
 
+            # Construct the URL for the app's page
             app_url = urljoin(self.base_url, link_elem.get("href", ""))
 
             # Extract version by taking the last word of the title and ensuring it consists of numbers and periods
@@ -201,17 +189,12 @@ class APKMirrorScraper(BaseAPKScraper):
             )
 
         except Exception as e:
-            logger.debug(f"Error parsing app row details: {e}")
+            print(f"Error parsing app row details: {e}")
             return None
 
     def get_variant_link(self, APK_url: str) -> Optional[str]:
         """
         Get variant link from APK page.
-
-        Args:
-            APK_url: URL of the APK page
-        Returns:
-            Variant page URL or None
         """
         # Step 1: Go to app page
         self._rate_limit()
@@ -228,16 +211,17 @@ class APKMirrorScraper(BaseAPKScraper):
         apk_spans = soup.select("svg.icon.tag-icon")
 
         apk_links = []
+        # Find the link going through the variant's link for one particular variant of the APK
         for span in apk_spans:
             a = span.parent
             if a.name == "a" and "accent_color" in a.get("class", []):
                 apk_links.append(a)
 
         if not apk_links:
-            logger.warning("No variant links found")
+            print("No variant links found")
             return None
 
-        # Gets the first link
+        # Gets the first variant link since we don't mind which variant we get
         variant_page_url = urljoin(self.base_url, apk_links[0].get("href", ""))
 
         return variant_page_url
@@ -245,12 +229,6 @@ class APKMirrorScraper(BaseAPKScraper):
     def get_download_link(self, result: APKResult) -> Optional[str]:
         """
         Get direct download link for an APKMirror result.
-
-        Args:
-            result: APKResult from search
-
-        Returns:
-            Direct download URL or None
         """
         if result.source != "apkmirror":
             return None
@@ -259,6 +237,7 @@ class APKMirrorScraper(BaseAPKScraper):
             apk_url = result.url
 
             # Step 3: Go to download page and find download button
+            # Most apps require going though a variant link first but some don't so check both
             self._rate_limit()
             download_response = self.safe_get(apk_url)
 
@@ -280,10 +259,9 @@ class APKMirrorScraper(BaseAPKScraper):
                 },
             )
 
+            # If there is no download button on the page, the page must have a variant link we must go through first
             if download_button is None:
-                logger.warning(
-                    "download button not found, attempting to get variant link..."
-                )
+                print("download button not found, attempting to get variant link...")
                 apk_url = self.get_variant_link(result.url)
 
                 if apk_url is None:
@@ -293,23 +271,24 @@ class APKMirrorScraper(BaseAPKScraper):
                 self._rate_limit()
                 variant_response = self.safe_get(apk_url)
 
+                # If no variant link there must be some issue
                 if variant_response is None:
                     print(f"Failed to get the variant link page ({apk_url})...")
                     return None
 
-                # Re-parse the new response
+                # Reparse the new response
                 variant_soup = BeautifulSoup(variant_response.text, "html.parser")
                 download_button = variant_soup.find("a", {"class": "downloadButton"})
 
+                # If there is no download button on the variant page there is an issue
                 if not download_button:
-                    logger.error(
-                        "Download button still not found after getting variant link"
-                    )
+                    print("Download button still not found after getting variant link")
                     return None
 
+            # Construct the URL used to get the link to the download page
             download_page_url = urljoin(self.base_url, download_button.get("href", ""))
 
-            # Step 4: Go to download page to get final link
+            # Step 4: Go to download page to get final link to download the APK
             self._rate_limit()
             download_headers = self.headers.copy()
             download_headers["Referer"] = apk_url
@@ -320,7 +299,7 @@ class APKMirrorScraper(BaseAPKScraper):
 
             download_soup = BeautifulSoup(download_response.text, "html.parser")  # pyright: ignore
 
-            # Find the actual download link
+            # Find the actual download link by looking for an <a> tag with rel="nofollow" and href existing with download path
             download_link = download_soup.find(
                 "a",
                 {
@@ -333,15 +312,16 @@ class APKMirrorScraper(BaseAPKScraper):
             )
 
             if download_link:
+                # If there is a download link construct it and return it
                 direct_url = urljoin(self.base_url, download_link.get("href", ""))
-                logger.info(f"Found direct download URL: {direct_url}")
+                print(f"Found direct download URL: {direct_url}")
                 return direct_url
 
-            logger.warning("Direct download link not found")
+            print("Direct download link not found")
             return None
 
         except Exception as e:
-            logger.error(f"Error getting download link: {e}")
+            print(f"Error getting download link: {e}")
             return None
 
     def search_and_download(
@@ -349,15 +329,6 @@ class APKMirrorScraper(BaseAPKScraper):
     ) -> tuple[Optional[APKResult], dict]:
         """
         Search for an APK and get its download link in one call.
-
-        Args:
-            query: Search query
-            captured_results: Dict of already captured results to avoid duplicates
-
-        Returns:
-            Tuple containing:
-                - APKResult with download link, or None if not found
-                - Updated captured_results dictionary
         """
         result: Optional[APKResult] = None
 
@@ -376,7 +347,7 @@ class APKMirrorScraper(BaseAPKScraper):
                 return None, captured_results
 
             base_name = self._extract_base_name(result.title).lower()
-            # If extracted download link and backup for this app then we don't need further copies
+            # If extracted download link and fallback download link for this app then we don't need further copies
             existing_result = captured_results.get(base_name)
             if existing_result and existing_result.fallback_download_url:
                 self.apk_counter += 1
@@ -386,17 +357,19 @@ class APKMirrorScraper(BaseAPKScraper):
             # Try to get download link if we have a result and don't have enough download links for APK
             download_link = self.get_download_link(result)
 
+            # If there is no download link go to next APK
             if download_link is None:
                 self.apk_counter += 1
                 continue
 
+            # If there is no existing entry for this result we add its direct download link
             if existing_result is None:
                 result.direct_download_url = download_link
                 captured_results[base_name] = result
                 self.apk_counter += 1
                 continue
             else:
-                # Download and fallback URL found no need to search further
+                # Download and fallback URL found for this APK so no need to search further
                 existing_result.fallback_download_url = download_link
                 break
 

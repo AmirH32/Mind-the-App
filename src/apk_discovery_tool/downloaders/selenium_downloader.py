@@ -25,15 +25,17 @@ class SeleniumDownloader(BaseDownloader):
     def __init__(self, download_dir: str):
         super().__init__(download_dir)
 
-        # Config broswer to not require manual intervention
+        # Config broswer to not require manual intervention (automated download) to remove Save file popup window
         options = uc.ChromeOptions()
         prefs = {
             "download.prompt_for_download": False,
         }
+        # Apply the preferences
         options.add_experimental_option("prefs", prefs)
 
-        # Initialize the browser once
-        print("Initializing Chrome driver...")
+        # Initialise the browser once
+        print("Initialising Chrome driver...")
+        # Picks a version build that is compatible with chromium on LTS 24.04.3 Ubuntu
         self.driver = uc.Chrome(options=options, version_main=145)
 
     def _get_filename(self, filename: str) -> str:
@@ -69,13 +71,14 @@ class SeleniumDownloader(BaseDownloader):
         # Files in download directory before download
         initial_files = set(os.listdir(self.download_dir))
 
-        # Trigger the download (and Cloudflare challenge)
+        # Trigger the download (+ Cloudflare challenge)
         self.driver.get(url)
         print("Waiting for Cloudflare challenge and download to finish...")
 
         start_time = time.time()
         downloaded_file = None
 
+        # Loop to see if a new file has been downloaded
         while time.time() - start_time < timeout:
             current_files = set(os.listdir(self.download_dir))
             new_files = current_files - initial_files
@@ -86,7 +89,7 @@ class SeleniumDownloader(BaseDownloader):
                 f for f in new_files if f.endswith(".apk") or f.endswith(".apkm")
             ]
 
-            # If there is a new download file we wait
+            # If there is a new download file web break otherwise we keep waiting
             if finished_files:
                 downloaded_file = finished_files[0]
                 break
@@ -95,11 +98,12 @@ class SeleniumDownloader(BaseDownloader):
             time.sleep(2)
 
         if downloaded_file:
+            # Rename the file to remove the apkmirror suffix
             clean_name = self._get_filename(downloaded_file)
             original_path = os.path.join(self.download_dir, downloaded_file)
             final_path = os.path.join(self.download_dir, clean_name)
 
-            os.rename(original_path, final_pa300)
+            os.rename(original_path, final_path)
 
             print(f"Successfully downloaded: {clean_name}")
             return final_path

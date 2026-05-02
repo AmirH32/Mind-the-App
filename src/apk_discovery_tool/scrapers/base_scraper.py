@@ -23,18 +23,7 @@ from typing import List, Optional, Dict
 
 @dataclass
 class APKResult:
-    """Represents a single APK search result.
-
-    Attributes:
-        title (str): Name or title of the APK.
-        url (str): URL of the search result page.
-        source (str): The source website (e.g., "apkmirror", "apkpure", "google").
-        description (Optional[str]): Short description of the APK.
-        version (Optional[str]): APK version string.
-        developer (Optional[str]): Developer or publisher of the APK.
-        direct_download_url (Optional[str]): Direct link to download the APK, if available.
-        fallback_download_url (Optional[str]): Fallback link to download the APK, if direct link is not available.
-    """
+    """Represents a single APK search result."""
 
     title: str
     url: str
@@ -46,7 +35,7 @@ class APKResult:
     fallback_download_url: Optional[str] = None
 
     def to_dict(self) -> Dict:
-        """Convert to dictionary for serialization."""
+        """Convert to dictionary for serialisation to store in JSON."""
         return {
             "title": self.title,
             "url": self.url,
@@ -60,18 +49,7 @@ class APKResult:
 
 class BaseAPKScraper(ABC):
     """Abstract base class for APK scrapers.
-
-    Provides a consistent interface for scraping APKs from different sources,
-    including search functionality, download link retrieval, rate limiting, and
-    session management.
-
-    Attributes:
-        timeout (int): Maximum time to wait for HTTP requests (in seconds).
-        max_results (int): Maximum number of search results to return.
-        rate_limit_delay (float): Delay (in seconds) between requests to avoid being blocked.
-        user_agent (str): User-Agent string used in HTTP requests.
-        headers (dict): HTTP headers including the User-Agent.
-        session: Optional HTTP session object for persistent connections.
+    Provides a consistent interface for scraping APKs from different sources, including search functionality, download link retrieval, rate limiting, and session management.
     """
 
     def __init__(
@@ -96,51 +74,19 @@ class BaseAPKScraper(ABC):
 
     @abstractmethod
     def search(self, query: str) -> Optional[APKResult]:
-        """Search for APKs matching a query.
-
-        Args:
-            query (str): The search term.
-
-        Returns:
-            APKResult object otherwise None.\
-
-        Raises:
-            NotImplementedError: Must be implemented in subclasses.
-        """
+        """Search for APKs matching a query."""
         raise NotImplementedError
 
     @abstractmethod
     def get_download_link(self, result: APKResult) -> Optional[str]:
-        """Retrieve a direct download link from a search result.
-
-        Args:
-            result (APKResult): An APKResult object to extract the link from.
-
-        Returns:
-            Optional[str]: Direct download URL if available, otherwise None.
-
-        Raises:
-            NotImplementedError: Must be implemented in subclasses.
-        """
+        """Retrieve a direct download link from a search result."""
         raise NotImplementedError
 
     @abstractmethod
     def search_and_download(
         self, query: str, captured_results: dict
     ) -> tuple[Optional[APKResult], dict]:
-        """Search for APKs and retrieve their download links.
-
-        Args:
-            query (str): The search term.
-            captured_results (Dict): Dict of already captured result titles to avoid duplicates but allow for one fallback download link retrieval.
-
-        Returns:
-            APKResult: APK search result with download links otherwise None.
-            dict: Set of already captured result titles
-
-        Raises:
-            NotImplementedError: Must be implemented in subclasses.
-        """
+        """Search for APKs and retrieve their download links."""
         raise NotImplementedError
 
     def _rate_limit(self):

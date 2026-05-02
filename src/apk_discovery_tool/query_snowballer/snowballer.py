@@ -54,21 +54,13 @@ class QuerySnowballer:
     def expand(self, seed_queries: List[str]) -> List[str]:
         """Expands a list of seed queries using BFS and the query provider.
 
-        Iteratively fetches related queries for each seed query and newly discovered
-        queries, up to `max_depth` BFS levels, while respecting `max_queries` and
-        `per_query_limit`. Stops if no new queries are found in a BFS layer
-        (convergence).
+        Iteratively fetches related queries for each seed query. Finds new queries up to max_depth while constrained to max_queries and per_query_limit. Stops if no new queries are found in a BFS layer (convergence).
 
         Args:
-            seed_queries (List[str]): Initial queries to expand.
+            Initial queries to expand.
 
         Returns:
-            List[str]: A list of unique queries collected, including the seeds.
-
-        Notes:
-            - The function sleeps briefly (0.2s) between requests to throttle API calls.
-            - Any errors from the provider are caught and logged; processing continues.
-            - Uses tqdm progress bars to indicate BFS depth processing.
+            A list of unique queries collected, including the seeds.
         """
         visited: Set[str] = set()
         queue = deque([(q, 0) for q in seed_queries])
@@ -80,13 +72,22 @@ class QuerySnowballer:
             last_run_size = len(visited)
 
             for _ in tqdm(range(current_level_size), desc=f"BFS Depth {queue[0][1]}"):
+                # Perform BFS
                 query, depth = queue.popleft()
+
+                # Ensure we haven't hit max depth
                 if depth > self.max_depth or query in visited:
                     continue
+
+                # Visit the query
                 visited.add(query)
+
+                # If after we visit we are at max limit then stop
                 if len(visited) >= self.max_queries:
                     print("[Snowballer] Reached maximum query limit.")
                     return list(visited)
+
+                # Find related queries with error handling in case rate limited
                 try:
                     related = self.provider.get_related_queries(
                         query, self.per_query_limit
@@ -95,11 +96,12 @@ class QuerySnowballer:
                     print(f"[Snowballer] Error fetching '{query}': {e}")
                     continue
 
+                # For all the related queries ensure they aren't visited or already in the queue before adding
                 for r in related:
                     if r not in visited and r not in queue:
                         queue.append((r, depth + 1))
 
-                # Sleep to throttle a bit
+                # Sleep to throttle a bit to avoid getting rate limited by provider
                 time.sleep(0.2)
 
             # Check convergence after finishing the entire BFS level

@@ -41,6 +41,7 @@ class QueryProvider:
         """
         blacklist = {"ipad", "iphone", "ios", "apple"}
 
+        # Remove apps that are likely to be iOS
         filtered_queries = [
             s for s in suggestions if not any(b in s.lower() for b in blacklist)
         ]

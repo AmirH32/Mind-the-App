@@ -39,6 +39,7 @@ class GoogleQueryFinder(QueryProvider):
         suggestions = resp.json()[1]  # second element has suggestions
         suggestions = suggestions[:query_limit]  # truncates to the query_limit
 
+        # Filter out iOS apps
         suggestions = self.filter_queries(suggestions)
 
         return suggestions
