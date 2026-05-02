@@ -12,20 +12,10 @@ class BaseAPKSearcher(ABC):
     def search_apks(self, query: str, num_results: int = 10) -> List[Dict]:
         """
         Search for APKs given a query.
-
-        Parameters:
-            query (str): The search query (e.g., "Parental Control App").
-            num_results (int): Maximum number of search results to retrieve.
-
-        Returns:
-            List[Dict]: Each dict should contain at least:
-                - "query": original query
-                - "title": result title
-                - "link": APK URL
-                - "desc": description
         """
         raise NotImplementedError("Must be implemented in subclass.")
 
     def clean_title(self, title: str):
+        # Added this to remove " - Apps on Google Play" suffix from titles returned by Google Play store search results
         clean_title = title.replace(" - Apps on Google Play", "")
         return clean_title.strip()

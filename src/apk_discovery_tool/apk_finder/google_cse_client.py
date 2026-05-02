@@ -9,19 +9,13 @@ class GoogleAPKSearcher(BaseAPKSearcher):
         if api_key == "" or search_engine_id == "":
             raise ValueError("API key and Search Engine ID must be provided.")
 
+        # Builds a custom search engine
         self._service = build("customsearch", "v1", developerKey=api_key)
         self._search_engine_id = search_engine_id
 
     def search_apks(self, query: str, num_results: int = 10):
-        """Search for APKs using Google Custom Search API.
-
-        Args:
-            query (str): Search query.
-            num_results (int): Maximum number of results.
-
-        Returns:
-            List[Dict]: Each dict contains "title" and "snippet".
-        """
+        """Search for APKs using Google Custom Search API."""
+        # Runs the search query on the custom search engine
         response = (
             self._service.cse()
             .list(q=query, cx=self._search_engine_id, num=num_results)
@@ -29,6 +23,7 @@ class GoogleAPKSearcher(BaseAPKSearcher):
         )
 
         results = []
+        # Clean the titles and extract snippets from search resutls
         for item in response.get("items", []):
             title = self.clean_title(item.get("title", ""))
             snippet = item.get("snippet", "")
