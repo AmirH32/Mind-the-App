@@ -16,7 +16,7 @@
 
 """
 Query Snowballer
-----------------
+
 Expands search queries using any SearchProvider implementation.
 
 This module performs:
@@ -35,17 +35,8 @@ from tqdm import tqdm
 class QuerySnowballer:
     """Performs BFS-based query expansion using a related query provider.
 
-    QuerySnowballer iteratively expands a set of seed queries by fetching
-    related queries from a `provider` (e.g., GoogleQueryFinder). It performs
-    a breadth-first search (BFS) to a maximum depth, respecting global and
-    per-query limits.
-
-    Attributes:
-        provider: An instance of SearchProvider (e.g. GoogleSearchProvider) provider implementing
-                `get_related_queries(query, query_limit)`.
-        max_depth (int): Maximum BFS depth to explore.
-        max_queries (int): Global limit on total queries collected.
-        per_query_limit (int): Limit of related queries fetched per query.
+    QuerySnowballer iteratively expands a set of seed queries by fetching related queries from a `provider` (e.g., GoogleQueryFinder). It performs
+    a breadth-first search (BFS) to a maximum depth, respecting global and per-query limits.
     """
 
     def __init__(
