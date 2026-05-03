@@ -230,14 +230,15 @@ class APKMalwareDetector:
     def plot_comparison(self, results_df: pd.DataFrame):
         """Create plots to compare models"""
         # Create a grid of 4 with a title
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+        axes = axes.flatten()
         fig.suptitle("Model Performance Comparison", fontsize=16)
 
-        metrics = ["Accuracy", "Precision", "Recall", "F1-Score"]
+        metrics = ["Accuracy", "Precision", "Recall", "F1-Score", "ROC-AUC"]
 
         for idx, metric in enumerate(metrics):
             # Use modular math and integer divide to switch between the rows and columns
-            ax = axes[idx // 2, idx % 2]
+            ax = axes[idx]
             # Convert strings to float for plotting
             values = results_df[metric].astype(float)
             # Horizontal bar chart with y-axis being model name and x-axis the value for the metric
