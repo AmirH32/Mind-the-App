@@ -171,7 +171,7 @@ def clean_text(text):
         return ""
     # Remove carriage returns, newlines, tabs
     text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
-    # Optional: collapse multiple spaces
+    # Collapse multiple spaces
     text = " ".join(text.split())
     return text
 

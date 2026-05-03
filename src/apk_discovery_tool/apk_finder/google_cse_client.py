@@ -9,7 +9,7 @@ class GoogleAPKSearcher(BaseAPKSearcher):
         if api_key == "" or search_engine_id == "":
             raise ValueError("API key and Search Engine ID must be provided.")
 
-        # Builds a custom search engine
+        # Builds an object to interact with the Google custom search API
         self._service = build("customsearch", "v1", developerKey=api_key)
         self._search_engine_id = search_engine_id
 
