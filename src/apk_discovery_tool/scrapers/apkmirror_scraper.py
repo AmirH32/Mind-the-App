@@ -290,8 +290,8 @@ class APKMirrorScraper(BaseAPKScraper):
 
             # Step 4: Go to download page to get final link to download the APK
             self._rate_limit()
-            download_headers = self.headers.copy()
-            download_headers["Referer"] = apk_url
+            # download_headers = self.headers.copy()
+            # download_headers["Referer"] = apk_url
             download_response = self.safe_get(download_page_url)
 
             if download_response is None:
