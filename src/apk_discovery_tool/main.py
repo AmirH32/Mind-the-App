@@ -415,6 +415,9 @@ def main():
             if apk is not None:
                 all_apk_downloads.append(apk)
 
+            # Clear the cached search before the next search to prevent memory bloat
+            scraper.cached_search = ""
+
         print(f"\nScraping complete. Found {len(all_apk_downloads)} APKs.")
 
         # Display scraped APKs
