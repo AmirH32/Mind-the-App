@@ -88,26 +88,26 @@ def find_and_save_queries():
     seed_queries = [
         "parental control app",
         "kids tracker app",
-        "track my wife",
-        "family locator",
-        "find my phone",
+        "track my wife",  # Almansoori
+        "family locator",  # In chatterjee's paper
+        "find my phone",  # Chatterjee
         "mobile monitoring app",
         "track my girlfriend's phone without them knowing",
-        "how to catch my cheating spouse",
-        "track my husband's phone without them knowing",
-        "read SMS from another phone",
-        "how can I read my wife's texts",
-        "phone spy on husband",
-        "see who bf is texting without him knowing",
-        "how to catch a cheating spouse with his cell phone",
-        "track wife's location",
-        "app to track girlfriend",
-        "track your husband",
-        "track my spouse",
-        "track my couple",
-        "SMS tracker",
-        "Cereberus",
-        "Mspy",
+        "how to catch my cheating spouse",  # Chatterjee
+        "track my husband's phone without them knowing",  # Chatterjee
+        "read SMS from another phone",  # Chatterjee
+        "how can I read my wife's texts",  # Chatterjee
+        "phone spy on husband",  # Chatterjee
+        "see who bf is texting without him knowing",  # Chatterjee
+        "how to catch a cheating spouse with his cell phone",  # Chatterjee
+        "track wife's location",  # Almansoori
+        "app to track girlfriend",  # Almansoori
+        "track your husband",  # Almansoori
+        "track my spouse",  # Almansoori
+        "track my couple",  # Almansoory
+        "SMS tracker",  # Chatterjee
+        "Cereberus",  # Chatterjee
+        "Mspy",  # Chatterjee
         "Maps",
     ]
 

@@ -35,8 +35,7 @@ from tqdm import tqdm
 class QuerySnowballer:
     """Performs BFS-based query expansion using a related query provider.
 
-    QuerySnowballer iteratively expands a set of seed queries by fetching related queries from a `provider` (e.g., GoogleQueryFinder). It performs
-    a breadth-first search (BFS) to a maximum depth, respecting global and per-query limits.
+    QuerySnowballer iteratively expands a set of seed queries by fetching related queries from a `provider` (e.g., GoogleQueryFinder). It performs a breadth-first search (BFS) to a maximum depth, respecting global and per-query limits.
     """
 
     def __init__(
