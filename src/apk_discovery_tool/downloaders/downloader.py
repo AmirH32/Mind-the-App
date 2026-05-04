@@ -18,6 +18,7 @@ import os
 import requests
 from tqdm import tqdm
 from typing import Optional
+import cloudscraper25 as cloudscraper
 from urllib.parse import urlparse, unquote
 from .base_downloader import BaseDownloader
 
@@ -91,8 +92,9 @@ class Downloader(BaseDownloader):
             "Referer": "https://www.apkmirror.com/",
             "Accept": "*/*",
         }
+        scraper = cloudscraper.create_scraper()
 
-        with requests.get(
+        with scraper.get(
             url, headers=headers, stream=True, allow_redirects=True
         ) as request:
             print(f"Downloading from: {request.url}")
