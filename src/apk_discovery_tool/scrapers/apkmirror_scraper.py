@@ -19,7 +19,7 @@ from typing import List, Optional, Dict
 from urllib.parse import quote_plus, urljoin
 from scrapers.base_scraper import BaseAPKScraper
 from scrapers.base_scraper import APKResult
-import cloudscraper  # scraper to bypass cloudflare
+import cloudscraper25 as cloudscraper  # scraper to bypass cloudflare
 from bs4 import BeautifulSoup
 from requests import Response
 import random
