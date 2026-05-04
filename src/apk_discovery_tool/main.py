@@ -255,15 +255,7 @@ def save_captured_results(captured_results: dict):
     # Convert APKResult objects todicts
     dictionary = {}
     for key, apk in captured_results.items():
-        dictionary[key] = {
-            "title": apk.title,
-            "url": apk.url,
-            "source": apk.source,
-            "version": apk.version,
-            "developer": apk.developer,
-            "direct_download_url": apk.direct_download_url,
-            "fallback_download_url": apk.fallback_download_url,
-        }
+        dictionary[key] = apk.to_dict()
 
     os.makedirs(os.path.dirname(captured_file), exist_ok=True)
     with open(captured_file, "w") as f:

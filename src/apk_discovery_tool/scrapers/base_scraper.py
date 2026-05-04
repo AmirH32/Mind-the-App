@@ -44,6 +44,7 @@ class APKResult:
             "version": self.version,
             "developer": self.developer,
             "direct_download_url": self.direct_download_url,
+            "fallback_download_url": self.fallback_download_url,
         }
 
 

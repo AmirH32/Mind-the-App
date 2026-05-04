@@ -50,6 +50,10 @@ class Downloader(BaseDownloader):
         self, response: requests.Response, filename: Optional[str] = None
     ) -> str:
         """Figure out the best filename to save the file as"""
+        # If a filename was passed as an argument, use it as the base name
+        if filename:
+            return filename
+
         # Check content-dispostiion header
         c_disp = response.headers.get("Content-Disposition", "")
         if c_disp and "filename=" in c_disp:
