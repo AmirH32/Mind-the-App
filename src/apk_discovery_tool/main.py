@@ -32,6 +32,7 @@ from scrapers.apkmirror_scraper import APKResult
 
 # from downloaders.downloader import Downloader
 from downloaders.selenium_downloader import SeleniumDownloader
+from downloaders.downloader import Downloader
 from downloaders.cleaner import Cleaner
 from utils.config import (
     GOOGLE_API_KEY,
@@ -276,7 +277,7 @@ def download_apks_from_file(file_path, download_dir):
         print("No APK downloads found in the file")
         return
 
-    downloader = SeleniumDownloader(download_dir=download_dir)
+    downloader = Downloader(download_dir=download_dir)
 
     try:
         for apk_info in tqdm(apk_data, desc="Downloading APKs"):
@@ -525,7 +526,7 @@ def main():
         downloaded = load_finished()
         print("STARTING BATCHED SCRAPING AND DOWNLOADING")
 
-        BATCH_SIZE = 20
+        BATCH_SIZE = 2
 
         batches = chunk_queries(filtered, BATCH_SIZE)
         numbered_batches = enumerate(batches, start=1)

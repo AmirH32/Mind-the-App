@@ -51,9 +51,14 @@ class Downloader(BaseDownloader):
         self, response: requests.Response, filename: Optional[str] = None
     ) -> str:
         """Figure out the best filename to save the file as"""
+
+        # Try to extract from the final URL after redirects
+        final_url = response.url
+        ext_from_url = self._extract_ext_from_url(final_url)
+
         # If a filename was passed as an argument, use it as the base name
-        if filename:
-            return filename
+        if filename and ext_from_url:
+            return f"{filename}{ext_from_url}"
 
         # Check content-dispostiion header
         c_disp = response.headers.get("Content-Disposition", "")
@@ -67,10 +72,6 @@ class Downloader(BaseDownloader):
                         return filename
             except Exception:
                 pass
-
-        # Try to extract from the final URL after redirects
-        final_url = response.url
-        ext_from_url = self._extract_ext_from_url(final_url)
 
         if filename:
             if filename.endswith(".apk") or filename.endswith(".apkm"):
