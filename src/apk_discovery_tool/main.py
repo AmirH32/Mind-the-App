@@ -526,7 +526,7 @@ def main():
         downloaded = load_finished()
         print("STARTING BATCHED SCRAPING AND DOWNLOADING")
 
-        BATCH_SIZE = 2
+        BATCH_SIZE = 20
 
         batches = chunk_queries(filtered, BATCH_SIZE)
         numbered_batches = enumerate(batches, start=1)
