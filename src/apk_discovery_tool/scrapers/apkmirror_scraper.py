@@ -324,9 +324,7 @@ class APKMirrorScraper(BaseAPKScraper):
             print(f"Error getting download link: {e}")
             return None
 
-    def search_and_download(
-        self, query: str, captured_results: dict
-    ) -> tuple[Optional[APKResult], dict]:
+    def search_and_download(self, query: str, captured_results: dict) -> dict:
         """
         Search for an APK and get its download link in one call.
         """
@@ -336,7 +334,7 @@ class APKMirrorScraper(BaseAPKScraper):
             if self.apk_counter >= self.max_results:
                 print("Reached maximum number of attempts, stopping search.")
                 self.apk_counter = 0
-                return None, captured_results
+                return captured_results
 
             result = self.search(query)
 
@@ -344,7 +342,7 @@ class APKMirrorScraper(BaseAPKScraper):
             if result is None:
                 print("No result found.")
                 self.apk_counter = 0
-                return None, captured_results
+                return captured_results
 
             base_name = self._extract_base_name(result.title).lower()
             # If extracted download link and fallback download link for this app then we don't need further copies
@@ -374,4 +372,4 @@ class APKMirrorScraper(BaseAPKScraper):
                 break
 
         self.apk_counter = 0
-        return existing_result, captured_results
+        return captured_results

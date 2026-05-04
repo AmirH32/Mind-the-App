@@ -19,6 +19,7 @@ import re
 from typing import Optional
 import undetected_chromedriver as uc
 from .base_downloader import BaseDownloader
+import shutil
 
 
 class SeleniumDownloader(BaseDownloader):
@@ -98,12 +99,17 @@ class SeleniumDownloader(BaseDownloader):
             time.sleep(2)
 
         if downloaded_file:
+            downloads_folder = os.path.expanduser("~/Downloads")
+
             # Rename the file to remove the apkmirror suffix
             clean_name = self._get_filename(downloaded_file)
-            original_path = os.path.join(self.download_dir, downloaded_file)
+
+            # Selenium downloads to the downloads folder so we move it to the configured folder
+            original_path = os.path.join(downloads_folder, downloaded_file)
             final_path = os.path.join(self.download_dir, clean_name)
 
-            os.rename(original_path, final_path)
+            # Move the file to the new name in the download directory
+            shutil.move(original_path, final_path)
 
             print(f"Successfully downloaded: {clean_name}")
             return final_path

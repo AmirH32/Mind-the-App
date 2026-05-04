@@ -220,8 +220,9 @@ def save_apk_downloads_to_file(apk_downloads, file_path):
 def load_captured_results():
     """Load captured results from file for fault tolerance."""
     captured_file = os.path.join(
-        os.path.dirname(PROGRESS_FILE), "captured_results.json"
-    )  # pyright: ignore
+        os.path.dirname(PROGRESS_FILE),  # pyright: ignore
+        "captured_results.json",
+    )
     if os.path.exists(captured_file):
         try:
             with open(captured_file, "r") as f:
@@ -248,8 +249,9 @@ def load_captured_results():
 def save_captured_results(captured_results: dict):
     """Save captured results to disk for fault tolerance."""
     captured_file = os.path.join(
-        os.path.dirname(PROGRESS_FILE), "captured_results.json"
-    )  # pyright: ignore
+        os.path.dirname(PROGRESS_FILE),  # pyright: ignore
+        "captured_results.json",
+    )
     # Convert APKResult objects todicts
     dictionary = {}
     for key, apk in captured_results.items():
@@ -462,14 +464,19 @@ def main():
         print(f"{'=' * 50}")
 
         for result in tqdm(filtered, desc="Obtaining APK info from APKMirror"):
-            apk, captured_results = scraper.search_and_download(
+            captured_results = scraper.search_and_download(
                 result["title"], captured_results
             )
-            if apk is not None:
-                all_apk_downloads.append(apk)
 
             # Clear the cached search before the next search to prevent memory bloat
             scraper.cached_search = ""
+
+        for apk in captured_results.values():
+            if apk.direct_download_url and not already_downloaded(
+                apk,
+                DOWNLOAD_DIRECTORY,  # pyright: ignore
+            ):
+                all_apk_downloads.append(apk)
 
         print(f"\nScraping complete. Found {len(all_apk_downloads)} APKs.")
 
@@ -497,8 +504,20 @@ def main():
                                 apk.direct_download_url
                             )
                             print(f"Downloaded: {file_path}")
+                            # Move to next APK
+                            continue
                         except Exception as e:
                             print(f"Failed: {e}")
+
+                    if apk.fallback_download_url:
+                        print("Attempting fallback URL...")
+                        try:
+                            file_path = downloader.download_file(
+                                apk.fallback_download_url
+                            )
+                            print(f"Downloaded via fallback: {file_path}")
+                        except Exception as e:
+                            print(f"Fallback failed: {e}")
             finally:
                 downloader.close()
 
@@ -520,42 +539,62 @@ def main():
                 f"\n> PROCESSING BATCH {i} (Items {((i - 1) * BATCH_SIZE) + 1} to {i * BATCH_SIZE})"
             )
 
-            batch_apks = []
             newly_fin = []
+            batch_apks = []
+
+            captured_before = set(captured_results.keys())
 
             for result in tqdm(batch_items, desc=f"Scraping Batch {i}"):
                 title = result["title"]  # pyright: ignore
 
-                # If we have seen the title before and downloaded it we should skip
+                # If we have seen the title query before and downloaded it we should skip
                 if title in downloaded:
                     continue
 
                 try:
-                    apk, captured_results = scraper.search_and_download(
+                    captured_results = scraper.search_and_download(
                         title, captured_results
                     )
 
-                    if apk is not None:
-                        batch_apks.append(apk)
-
+                    # Mark this query as downloaded for the next iteration since we don't load from the file on each iteration. No problem here since if the batch fails, we will just reattempt this whole batch and downloaded is lost to memory
                     downloaded.append(title)
+                    # Keep track of queries that have been finished in this batch
                     newly_fin.append(title)
 
                 except Exception as e:
                     print(f"Error processing {title}: {e}")
                     continue
 
+            # Remove the temporary downloads file if it exists from the previous batch
             if os.path.exists(TEMP_DOWNLOADS_FILE):  # pyright: ignore
                 os.remove(TEMP_DOWNLOADS_FILE)  # pyright: ignore
 
+            # Find all new captured results from this batch
+            captured_after = set(captured_results.keys())
+            new_captured_keys = captured_after - captured_before
+
+            # Add the new APKs into a list to be downloaded
+            for key in new_captured_keys:
+                apk = captured_results[key]
+                if (
+                    not already_downloaded(apk, DOWNLOAD_DIRECTORY)  # pyright: ignore
+                    and apk.direct_download_url
+                ):
+                    batch_apks.append(apk)
+
             if batch_apks:
                 # Save the batched APKs to the direct downloads file (cumulative) and temp downloads file (current batch only) as well as the captured results for fault tolerance, then download the APKs from the current batch
+                # Direct download file is not needed by program just for record sake
                 save_apk_downloads_to_file(batch_apks, DIRECT_DOWNLOADS_FILE)
+                # Temp download file is needed to keep track of what to download for current batch
                 save_apk_downloads_to_file(batch_apks, TEMP_DOWNLOADS_FILE)
+
+                # Save all captured results
                 save_captured_results(captured_results)
                 download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
 
             for title in newly_fin:
+                # Only save the title after download is done, otherwise we redownload
                 save_finished(title)
 
             print(f"Batch {i} completed.")

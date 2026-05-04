@@ -83,9 +83,7 @@ class BaseAPKScraper(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def search_and_download(
-        self, query: str, captured_results: dict
-    ) -> tuple[Optional[APKResult], dict]:
+    def search_and_download(self, query: str, captured_results: dict) -> dict:
         """Search for APKs and retrieve their download links."""
         raise NotImplementedError
 
