@@ -27,6 +27,8 @@ from query_snowballer.snowballer import QuerySnowballer
 from query_provider.google_provider import GoogleQueryFinder
 from apk_finder.google_cse_client import GoogleAPKSearcher
 from scrapers.apkmirror_scraper import APKMirrorScraper
+from scrapers.apkmirror_scraper import APKResult
+
 
 # from downloaders.downloader import Downloader
 from downloaders.selenium_downloader import SeleniumDownloader
@@ -213,6 +215,57 @@ def save_apk_downloads_to_file(apk_downloads, file_path):
 
     print(f"\nSaved {len(apk_data)} APK downloads to {file_path}")
     return apk_data
+
+
+def load_captured_results():
+    """Load captured results from file for fault tolerance."""
+    captured_file = os.path.join(
+        os.path.dirname(PROGRESS_FILE), "captured_results.json"
+    )  # pyright: ignore
+    if os.path.exists(captured_file):
+        try:
+            with open(captured_file, "r") as f:
+                data = json.load(f)
+                # Reconstruct APKResult objects from dicts
+                captured_results = {}
+                for key, value in data.items():
+                    apk = APKResult(
+                        title=value["title"],
+                        url=value["url"],
+                        source=value["source"],
+                        version=value["version"],
+                        developer=value["developer"],
+                        direct_download_url=value.get("direct_download_url"),
+                        fallback_download_url=value.get("fallback_download_url"),
+                    )
+                    captured_results[key] = apk
+                return captured_results
+        except Exception as e:
+            print(f"Error loading captured results: {e}")
+    return {}
+
+
+def save_captured_results(captured_results: dict):
+    """Save captured results to disk for fault tolerance."""
+    captured_file = os.path.join(
+        os.path.dirname(PROGRESS_FILE), "captured_results.json"
+    )  # pyright: ignore
+    # Convert APKResult objects todicts
+    dictionary = {}
+    for key, apk in captured_results.items():
+        dictionary[key] = {
+            "title": apk.title,
+            "url": apk.url,
+            "source": apk.source,
+            "version": apk.version,
+            "developer": apk.developer,
+            "direct_download_url": apk.direct_download_url,
+            "fallback_download_url": apk.fallback_download_url,
+        }
+
+    os.makedirs(os.path.dirname(captured_file), exist_ok=True)
+    with open(captured_file, "w") as f:
+        json.dump(dictionary, f, indent=2)
 
 
 def download_apks_from_file(file_path, download_dir):
@@ -452,7 +505,7 @@ def main():
     # Step 4b: Batching scraping and downloads
     if args.batch and filtered:
         scraper = APKMirrorScraper()
-        captured_results = {}
+        captured_results = load_captured_results()
 
         downloaded = load_finished()
         print("STARTING BATCHED SCRAPING AND DOWNLOADING")
@@ -496,8 +549,10 @@ def main():
                 os.remove(TEMP_DOWNLOADS_FILE)  # pyright: ignore
 
             if batch_apks:
+                # Save the batched APKs to the direct downloads file (cumulative) and temp downloads file (current batch only) as well as the captured results for fault tolerance, then download the APKs from the current batch
                 save_apk_downloads_to_file(batch_apks, DIRECT_DOWNLOADS_FILE)
                 save_apk_downloads_to_file(batch_apks, TEMP_DOWNLOADS_FILE)
+                save_captured_results(captured_results)
                 download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
 
             for title in newly_fin:
