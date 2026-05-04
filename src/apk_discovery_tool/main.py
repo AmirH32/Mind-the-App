@@ -299,14 +299,18 @@ def download_apks_from_file(file_path, download_dir):
                 print(f"Fallback URL: {fallback_url}")
 
                 try:
-                    file_path = downloader.download_file(download_url)
+                    file_path = downloader.download_file(
+                        download_url, apk_info.get("title")
+                    )
                     print(f"Downloaded: {file_path}")
                 except Exception as e:
                     print(f"Failed to download: {e}")
                     if fallback_url:
                         print("Attempting fallback URL...")
                         try:
-                            file_path = downloader.download_file(fallback_url)
+                            file_path = downloader.download_file(
+                                fallback_url, apk_info.get("title")
+                            )
                             print(f"Downloaded via fallback: {file_path}")
                         except Exception as e2:
                             print(f"Fallback download failed: {e2}")
@@ -501,7 +505,7 @@ def main():
                         print(f"\nDownloading: {filename}")
                         try:
                             file_path = downloader.download_file(
-                                apk.direct_download_url
+                                apk.direct_download_url, apk.title
                             )
                             print(f"Downloaded: {file_path}")
                             # Move to next APK
@@ -513,7 +517,7 @@ def main():
                         print("Attempting fallback URL...")
                         try:
                             file_path = downloader.download_file(
-                                apk.fallback_download_url
+                                apk.fallback_download_url, apk.title
                             )
                             print(f"Downloaded via fallback: {file_path}")
                         except Exception as e:

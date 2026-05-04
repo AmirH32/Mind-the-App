@@ -26,7 +26,7 @@ class BaseDownloader(ABC):
         os.makedirs(self.download_dir, exist_ok=True)
 
     @abstractmethod
-    def download_file(self, url: str) -> Optional[str]:
+    def download_file(self, url: str, filename: str) -> Optional[str]:
         """Download a file from the given URL and return the local file path."""
         pass
 

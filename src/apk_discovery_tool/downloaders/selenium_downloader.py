@@ -36,41 +36,45 @@ class SeleniumDownloader(BaseDownloader):
 
         # Initialise the browser once
         print("Initialising Chrome driver...")
-        # Picks a version build that is compatible with chromium on LTS 24.04.3 Ubuntu
-        self.driver = uc.Chrome(options=options, version_main=145)
+        # Picks a version build that is compatible with current chromium on LTS 24.04.3 Ubuntu
+        self.driver = uc.Chrome(options=options, version_main=147)
+        self._user_download_dir = os.path.expanduser("~/Downloads")
 
-    def _get_filename(self, filename: str) -> str:
-        """
-        Converts:
-        net.familo.android_2.99.3-1361_minAPI21(nodpi)_apkmirror.com.apk
+    # Deprecated because we pass title as filename directly
+    # def _get_filename(self, filename: str) -> str:
+    #     """
+    #     Converts:
+    #     net.familo.android_2.99.3-1361_minAPI21(nodpi)_apkmirror.com.apk
+    #
+    #     Into:
+    #     net.familo.android_2.99.3-1361.apk
+    #     """
+    #     name, ext = os.path.splitext(filename)
+    #
+    #     # Remove the apkmirror suffix
+    #     name = name.replace("_apkmirror.com", "")
+    #
+    #     # Keep only package + version-build
+    #     # Matches: package_version-build
+    #     match = re.match(r"^(.+?_\d+(?:\.\d+)*-\d+)", name)
+    #
+    #     if match:
+    #         cleaned = match.group(1)
+    #     else:
+    #         cleaned = name  # fallback if pattern fails
+    #
+    #     return cleaned + ext
 
-        Into:
-        net.familo.android_2.99.3-1361.apk
-        """
-        name, ext = os.path.splitext(filename)
-
-        # Remove the apkmirror suffix
-        name = name.replace("_apkmirror.com", "")
-
-        # Keep only package + version-build
-        # Matches: package_version-build
-        match = re.match(r"^(.+?_\d+(?:\.\d+)*-\d+)", name)
-
-        if match:
-            cleaned = match.group(1)
-        else:
-            cleaned = name  # fallback if pattern fails
-
-        return cleaned + ext
-
-    def download_file(self, url: str, timeout: int = 180) -> Optional[str]:
+    def download_file(
+        self, url: str, filename: str, timeout: int = 180
+    ) -> Optional[str]:
         """
         Navigates to the URL bypassing Cloudflare and waits for Chrome to finish the download.
         """
         print(f"Navigating to: {url}")
 
         # Files in download directory before download
-        initial_files = set(os.listdir(self.download_dir))
+        initial_files = set(os.listdir(self._user_download_dir))
 
         # Trigger the download (+ Cloudflare challenge)
         self.driver.get(url)
@@ -81,7 +85,7 @@ class SeleniumDownloader(BaseDownloader):
 
         # Loop to see if a new file has been downloaded
         while time.time() - start_time < timeout:
-            current_files = set(os.listdir(self.download_dir))
+            current_files = set(os.listdir(self._user_download_dir))
             new_files = current_files - initial_files
             # Check if new files have been donwloaded
 
@@ -99,19 +103,17 @@ class SeleniumDownloader(BaseDownloader):
             time.sleep(2)
 
         if downloaded_file:
-            downloads_folder = os.path.expanduser("~/Downloads")
-
-            # Rename the file to remove the apkmirror suffix
-            clean_name = self._get_filename(downloaded_file)
-
             # Selenium downloads to the downloads folder so we move it to the configured folder
-            original_path = os.path.join(downloads_folder, downloaded_file)
-            final_path = os.path.join(self.download_dir, clean_name)
+            _, ext = os.path.splitext(downloaded_file)
+            print(filename + ext)
+
+            original_path = os.path.join(self._user_download_dir, downloaded_file)
+            final_path = os.path.join(self.download_dir, filename + ext)
 
             # Move the file to the new name in the download directory
             shutil.move(original_path, final_path)
 
-            print(f"Successfully downloaded: {clean_name}")
+            print(f"Successfully downloaded: {filename}")
             return final_path
         else:
             print(f"Download timed out after {timeout} seconds.")
