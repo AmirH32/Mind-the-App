@@ -185,6 +185,15 @@ def load_json(file_path):
         return json.load(f)
 
 
+def get_downloader(downloader_type, download_dir):
+    """Factory function to return the appropriate downloader instance."""
+    if downloader_type == "selenium":
+        return SeleniumDownloader(download_dir=download_dir)
+    # Default to basic downloader
+    else:
+        return Downloader(download_dir=download_dir)
+
+
 def save_apk_downloads_to_file(apk_downloads, file_path):
     """Save APK download information to JSON file."""
     apk_data = []
@@ -263,7 +272,7 @@ def save_captured_results(captured_results: dict):
         json.dump(dictionary, f, indent=2)
 
 
-def download_apks_from_file(file_path, download_dir):
+def download_apks_from_file(file_path, download_dir, downloader):
     """Download APKs from a saved JSON file."""
     if not os.path.exists(file_path):
         print(f"Error: APK downloads file not found at {file_path}")
@@ -276,8 +285,6 @@ def download_apks_from_file(file_path, download_dir):
     if not apk_data:
         print("No APK downloads found in the file")
         return
-
-    downloader = Downloader(download_dir=download_dir)
 
     try:
         for apk_info in tqdm(apk_data, desc="Downloading APKs"):
@@ -338,7 +345,7 @@ def already_downloaded(apk, download_dir: str) -> bool:
     Returns True if an APK with same title + version
     already exists in download directory.
     """
-    expected_fragment = f"{apk.title} {apk.version}".lower()
+    expected_fragment = apk.title.lower()
 
     print(f"Looking for file {expected_fragment} in {download_dir}... Not found.")
 
@@ -402,8 +409,8 @@ def main():
     parser.add_argument(
         "-ld",
         "--load-and-download",
-        action="store_true",
-        help="Load APK downloads from file and download them (use if you have run main with -a and -sd flags before)",
+        choices=["batch", "all"],
+        help="Load APK downloads from file and download them (use if you have run main with (-a and -sd) or (-b) flags before). 'batch' to download from temp batch file, 'all' to download from the cumulative direct downloads file",
     )
 
     parser.add_argument(
@@ -411,6 +418,13 @@ def main():
         "--cleanup",
         action="store_true",
         help="Extact APKs from APKMs and remove APKMs and other non-APK file extensions (use with -dd or -ld flags)",
+    )
+
+    parser.add_argument(
+        "--downloader",
+        choices=["basic", "selenium"],
+        default="basic",
+        help="'basic' for cloudscraper downloader (default), 'selenium' for Selenium downloader",
     )
 
     args = parser.parse_args()
@@ -490,7 +504,7 @@ def main():
             print(f"\n{'=' * 50}")
             print("DIRECT DOWNLOAD")
             print(f"{'=' * 50}")
-            downloader = SeleniumDownloader(download_dir=DOWNLOAD_DIRECTORY)  # pyright: ignore
+            downloader = get_downloader(args.downloader, DOWNLOAD_DIRECTORY)  # pyright: ignore
             try:
                 for apk in all_apk_downloads:
                     if apk.direct_download_url:
@@ -588,7 +602,10 @@ def main():
 
                 # Save all captured results
                 save_captured_results(captured_results)
-                download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
+                downloader = get_downloader(args.downloader, DOWNLOAD_DIRECTORY)  # pyright: ignore
+                download_apks_from_file(
+                    TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY, downloader
+                )
 
             for title in newly_fin:
                 # Only save the title after download is done, otherwise we redownload
@@ -601,7 +618,13 @@ def main():
         if not DOWNLOAD_DIRECTORY:
             print("Error: DOWNLOAD_DIRECTORY not configured in config.py")
             return
-        download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY)
+        downloader = get_downloader(args.downloader, DOWNLOAD_DIRECTORY)  # pyright: ignore
+        if args.load_and_download == "batch":
+            download_apks_from_file(TEMP_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY, downloader)
+        else:
+            download_apks_from_file(
+                DIRECT_DOWNLOADS_FILE, DOWNLOAD_DIRECTORY, downloader
+            )
 
     # Step 6: Cleanup downloaded files
     if args.cleanup:
