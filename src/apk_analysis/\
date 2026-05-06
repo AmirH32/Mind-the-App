@@ -75,7 +75,7 @@ class APK:
         self._providers = self._apk.get_providers()
         # self._activity_aliases = self._apk.get_activity_aliases() deprecated since it is not a strong signal and adds complexity to the code
         self._exported_provider = self._has_exported_provider()
-        self._fore_service_count, self._a_service_count = self._has_suspicious_service()
+        self.suspicious_service = self._has_suspicious_service()
         self._suspicious_receiver_score = self._has_suspicious_receiver()
         self._hidden_icon, self._boot_persistance, self._user_persistance = (
             self._suspicious_intentions()
@@ -117,8 +117,7 @@ class APK:
             "num_sus_ips": self._num_sus_ips,
             "num_sus_domains": self._num_sus_urls,
             "exported_provider": self._exported_provider,
-            "accessibility_service_count": self._a_service_count,
-            "foreground_service_count": self._fore_service_count,
+            "suspicious_service": self.suspicious_service,
             "suspicious_receiver_score": self._suspicious_receiver_score,
         }
 
@@ -265,6 +264,7 @@ class APK:
                 # Check if this name is declared in manifest
                 if expected_declared_name not in declared_libs:
                     suspicious.append(expected_declared_name)
+        print(f"The suspicious libraries are: {suspicious}")
         return suspicious
 
     def _is_valid_ip(self, domain: str) -> bool:
@@ -658,8 +658,7 @@ class APKanalyser:
             "num_total_permissions",
             "num_suspicious_permissions",
             "exported_provider",
-            "accessibility_service_count",
-            "foreground_service_count",
+            "suspicious_service",
             "suspicious_receiver_score",
             "hidden_icon",
         ] + list(perm_headers)
@@ -705,12 +704,9 @@ class APKanalyser:
                         metadata.get("suspicious_permissions", [])
                     ),
                     "exported_provider": 1 if metadata.get("exported_provider") else 0,
-                    "accessibility_service_count": metadata.get(
-                        "accessibility_service_count", 0
-                    ),
-                    "foreground_service_count": metadata.get(
-                        "foreground_service_count", 0
-                    ),
+                    "suspicious_service": 1
+                    if metadata.get("suspicious_service")
+                    else 0,
                     "suspicious_receiver_score": metadata.get(
                         "suspicious_receiver_score", 0
                     ),
@@ -750,12 +746,7 @@ class APKanalyser:
                 )
                 print(f"Targets Old SDK: {metadata['targets_old_sdk']}")
                 print(f"Exported Provider: {metadata['exported_provider']}")
-                print(
-                    f"Accessibility Service Count: {metadata['accessibility_service_count']}"
-                )
-                print(
-                    f"Foreground Service Count: {metadata['foreground_service_count']}"
-                )
+                print(f"Suspicious Service: {metadata['suspicious_service']}")
                 print(
                     f"Suspicious Receiver Score: {metadata['suspicious_receiver_score']}"
                 )
