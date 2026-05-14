@@ -34,16 +34,23 @@ class ConsensusModel:
     Consensus model that combines predictions from multiple models that inherit from BaseModel
     """
 
-    def __init__(self, models: List[BaseModel], voting: str = "soft"):
+    def __init__(
+        self, models: List[BaseModel], voting: str = "soft", trained: bool = False
+    ):
         self.models = models
         self.voting = voting  # "hard" or "soft", hard voting uses the predicted class label, while soft voting uses the predicted probability to make a final prediction.
         self.weights = None
+        # Flag to check if all models are trained
+        self.trained = trained
 
     # Utilise forward referencing using speech marks since the class is not yet fully defined but I want to refer to it
     def fit(self, X_train: pd.DataFrame, y_train: pd.Series) -> "ConsensusModel":
         """Train all individual models"""
-        for model in self.models:
-            model.fit(X_train, y_train)
+
+        if not self.trained:
+            for model in self.models:
+                model.fit(X_train, y_train)
+            self.trained = True
 
         # Calculate weights based on cross-validation scores
         self.weights = []
@@ -78,7 +85,7 @@ class ConsensusModel:
             raise ValueError("Model weights not calculated. Call fit() first.")
         if self.voting == "hard":
             # Each predict returns a Numpy array that looks like [0, 1, 0, 1] for each sample
-            # All models vote with their prediction resulting in Numpy arrow that has row for each model and a column for each sample
+            # All models vote with their prediction resulting in Numpy array that has row for each model and a column for each sample
             predictions = np.array([model.predict(X) for model in self.models])
 
             # Weighted voting where we initialise the number of samples and the possible binary classification: benign or dual use. We use NumPy array to do this
@@ -124,7 +131,7 @@ class ConsensusModel:
                 for i in range(2):  # For binary classification
                     weighted_votes[:, i] += ((pred == i).astype(int)) * weight
             # Finds the index of the largest value in the each row and returns that
-            # Perhaps we can add method to return the confidence of the prediction as well
+            # Returns the weighted vote count for each class. This is not probability but gives indication of confidence.
             return weighted_votes
         else:
             # predict_probs returns a numpy array which is 2D and looks like [[0.8, 0.2], [0.3, 0.7]]. Each row is a sample and each column is the probability of being in that class
@@ -137,7 +144,7 @@ class ConsensusModel:
             # Iterate through the probability predictions from each model along with their corresponding weights and adds it as a vectorised computation, essentially goes over each element in the vector and adds the probability the model predicted multiplied by that models weight. Since all weights sum to 1 the probabilities should still sum to 1.
             for probs, weight in zip(probs, self.weights):
                 weighted_probs += probs * weight
-            # Finds the largest value in each row and returns the index of the column corresponding to that value which will be 0 for benign and 1 for dual use.
+            # Returns the weighted cumulative probability for each class.
             return weighted_probs
 
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, float]:

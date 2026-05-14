@@ -15,11 +15,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from abc import ABC
+from abc import ABC, abstractmethod
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional, List, Dict
+import shap
+
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
@@ -55,6 +57,7 @@ class BaseModel(ABC):
         self.feature_importance = None
         self.scaler = StandardScaler()
 
+    @abstractmethod
     def create_pipeline(self) -> Pipeline:
         """Create model pipeline"""
         raise NotImplementedError("Subclass must implemet create_pipeline method")
@@ -157,3 +160,46 @@ class BaseModel(ABC):
             ).sort_values("importance", ascending=False)
         else:
             return None
+
+    def get_shap_values(self, X_test: pd.DataFrame) -> Optional[Dict]:
+        """Calculate SHAP values for feature importance, for larger datasets use samples because SHAPLEY can take a long time"""
+
+        if self.model is None:
+            raise ValueError("Model not trained yet. Call fit() first.")
+
+        # Get the classifier from pipeline
+        classifier = self.model.named_steps["classifier"]
+
+        pipeline_steps = list(self.model.steps)
+        # Get all pipeline steps apart from the classifier
+        pre_steps = pipeline_steps[:-1]
+
+        if pre_steps:
+            pre_pipeline = Pipeline(pre_steps)
+            # Transforms data with scalar for models that require it like logistic regression and SVM
+            X_transformed = pre_pipeline.transform(X_test)
+            # Convert numpy back into pandas with original column names
+            X_sample = pd.DataFrame(X_transformed, columns=X_test.columns)
+        else:
+            X_sample = X_test.reset_index(drop=True)
+
+        # Choose explainer based on model type
+        if hasattr(classifier, "coef_"):
+            # Linear models, use LinearExplainer (faster)
+            explainer = shap.LinearExplainer(classifier, X_sample)
+        elif self.config.name in ["random_forest", "gradient_boosting"]:
+            # Use TreeExplainer for tree-based models
+            explainer = shap.TreeExplainer(classifier, X_sample)
+        else:
+            # Non-linear use explainer that approximates SHAP values, use raw data
+            explainer = shap.KernelExplainer(self.predict_probs, X_test)
+
+        # Calculate SHAP values
+        shap_values = explainer.shap_values(X_sample)
+
+        return {
+            "shap_values": shap_values,
+            "explainer": explainer,
+            "X_sample": X_sample,
+            "features": X_sample.columns.tolist(),
+        }

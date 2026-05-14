@@ -848,7 +848,22 @@ def select_constant(arg_value, config_value, name) -> str:
         )
 
 
+def check_constants():
+    """Checks if essential constants are set."""
+    missing = []
+    if not isinstance(CFG_APK_DIR, str):
+        missing.append("CFG_APK_DIR")
+    if not isinstance(CFG_OUTPUT_CSV, str):
+        missing.append("CFG_OUTPUT_CSV")
+    if not isinstance(CFG_JSON_PATH, str):
+        missing.append("CFG_JSON_PATH")
+    if missing:
+        raise ValueError(f"Missing or invalid constants: {', '.join(missing)}")
+
+
 if __name__ == "__main__":
+    check_constants()
+
     parser = argparse.ArgumentParser(
         description="Extract static features from APKs for ML analysis."
     )

@@ -20,8 +20,10 @@ import warnings
 import argparse
 import pandas as pd
 import joblib
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shap
 from typing import List, Tuple, Type, Dict
 
 from models.base_model import BaseModel
@@ -107,7 +109,7 @@ class APKMalwareDetector:
         print(f"True label distribution:\n{y.value_counts()}")
         print(f"Malware sample distribution: {y.mean():.2%}")
 
-        return X, y
+        return X, y  # pyright: ignore
 
     def split_data(self, X: pd.DataFrame, y: pd.Series, test_size: float = 0.2):
         """Split data into train/test sets"""
@@ -168,21 +170,26 @@ class APKMalwareDetector:
         if isinstance(self.X_train, pd.DataFrame) and isinstance(
             self.y_train, pd.Series
         ):
-            models = []
+            trained_models = []
             for model_type in model_types:
                 # Create a model for each model_type you passed into the function as a list
                 model = self.create_model(model_type)
                 # Adds the untrained  model to the list of models
-                models.append(model)
+                model.fit(self.X_train, self.y_train)
+                trained_models.append(model)
+
+                self.trained_models[model_type] = model
 
             # Create a consensus model instance that takes the trained models and uses soft voting (can be changed to hard if needed)
-            consensus_hard = ConsensusModel(models, voting="hard")
+            consensus_hard = ConsensusModel(trained_models, voting="hard", trained=True)
+
             # Fit the consensus model to the training data
             consensus_hard.fit(self.X_train, self.y_train)
+
             # Add the consensus model to the dictionary of trained models
             self.trained_models["consensus_hard"] = consensus_hard
 
-            consensus_soft = ConsensusModel(models, voting="soft")
+            consensus_soft = ConsensusModel(trained_models, voting="soft", trained=True)
             consensus_soft.fit(self.X_train, self.y_train)
             self.trained_models["consensus_soft"] = consensus_soft
 
@@ -301,6 +308,89 @@ class APKMalwareDetector:
             )
             plt.show()
 
+    def plot_shap_analysis(self):
+        """Create SHAP analysis plots for models that support it"""
+
+        for name, model in self.trained_models.items():
+            # Skip consensus models since feature importance doesn't make sense since it aggregates models
+            if "consensus" in name:
+                continue
+
+            # Check if model has the shap method
+            if hasattr(model, "get_shap_values"):
+                print(f"\nSHAP value for {name}")
+
+                shap_results = model.get_shap_values(self.X_test)
+
+                if shap_results:
+                    shap_values = shap_results["shap_values"]
+                    X_sample = shap_results["X_sample"]
+
+                    # For binary classification, use dual-use classification
+                    if isinstance(shap_values, list):
+                        shap_values_class1 = shap_values[1]
+                    elif shap_values.ndim == 3:
+                        shap_values_class1 = shap_values[:, :, 1]
+                    else:
+                        shap_values_class1 = shap_values
+
+                    display_name = name.replace("_", " ").title()
+
+                    fig, ax = plt.subplots(figsize=(14, 10))
+                    shap.summary_plot(
+                        shap_values_class1,
+                        X_sample,
+                        feature_names=self.feature_names,
+                        max_display=15,
+                        show=False,
+                        plot_size=None,  # let our figsize control dimensions
+                    )
+                    ax.set_title(
+                        f"SHAP Feature Impact — {display_name}\n"
+                        "(colour = feature value; x-axis = impact on dual-use prediction, each sample is a dot)",
+                        fontsize=13,
+                        pad=12,
+                    )
+                    ax.tick_params(axis="y", labelsize=11)  # feature names
+                    ax.tick_params(axis="x", labelsize=10)
+                    ax.set_xlabel("SHAP value (impact on model output)", fontsize=11)
+                    plt.tight_layout()
+                    plt.savefig(
+                        os.path.join(self.output_dir, f"{name}_shap_summary.png"),
+                        dpi=150,  # 300 dpi at 14×10 in is enormous; 150 is fine
+                        bbox_inches="tight",
+                    )
+                    plt.close()
+
+                    fig, ax = plt.subplots(figsize=(12, 7))
+                    shap.summary_plot(
+                        shap_values_class1,
+                        X_sample,
+                        feature_names=self.feature_names,
+                        max_display=15,
+                        plot_type="bar",
+                        show=False,
+                        plot_size=None,
+                    )
+                    ax.set_title(
+                        f"SHAP Global Feature Importance — {display_name}",
+                        fontsize=13,
+                        pad=12,
+                    )
+                    ax.tick_params(axis="y", labelsize=11)
+                    ax.tick_params(axis="x", labelsize=10)
+                    ax.set_xlabel(
+                        "Mean |SHAP value| (average impact on dual-use prediction)",
+                        fontsize=11,
+                    )
+                    plt.tight_layout()
+                    plt.savefig(
+                        os.path.join(self.output_dir, f"{name}_shap_bar.png"),
+                        dpi=150,
+                        bbox_inches="tight",
+                    )
+                    plt.close()
+
     def save_models(self):
         """Save all trained models"""
         for name, model in self.trained_models.items():
@@ -363,13 +453,12 @@ class APKMalwareDetector:
                 print(f"\nTraining single model: {model_types[0]}")
                 self.train_single_model(model_types[0])
 
-            if all_models:
-                print("\nTraining multiple models:")
-                for model_type in model_types:
-                    # Don't retrain models already trained by the consensus model
-                    if model_type not in self.trained_models:
-                        print(f"\n- {model_type}")
-                        self.train_single_model(model_type)
+            # If not consensus train the individual models
+            for model_type in model_types:
+                # Don't retrain models already trained by the consensus model
+                if model_type not in self.trained_models:
+                    print(f"\n- {model_type}")
+                    self.train_single_model(model_type)
 
             # Save the models
             self.save_models()
@@ -381,6 +470,8 @@ class APKMalwareDetector:
             # Plot the results
             self.plot_comparison(results_df)
             self.plot_feature_importance()
+
+            self.plot_shap_analysis()
 
             print("TRAINING COMPLETE, PLOTS and MODELS SAVED")
         else:
@@ -430,7 +521,7 @@ def main():
         "--load",
         "-l",
         action="store_true",
-        help="Directory to load pre-trained models from",
+        help="Load pre-trained models from output_directory instead of retraining",
     )
 
     args = parser.parse_args()
@@ -440,10 +531,6 @@ def main():
     # Handle model aliases
     if "all" in args.models:
         model_types = ["random_forest", "logistic", "svm", "gradient_boosting"]
-    elif "rf" in args.models:
-        model_types = ["random_forest"]
-        if len(args.models) > 1:
-            model_types.extend([m for m in args.models if m != "rf"])
     else:
         model_types = args.models
 

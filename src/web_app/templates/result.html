@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Analysis Result: {{ result.apk_name }}</title>
+  <title>Analysis Results</title>
 
   <!-- bootstrap css from cdn -->
   <link rel="stylesheet"
@@ -102,7 +102,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       margin-bottom: 6px;
       border: 1px solid #f5c6cb;
       border-radius: 5px;
-      padding: 4px 8px;
+      padding: 4px 8px;<div style="text-align: center; margin-bottom: 20px;">
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+      Analyse More APKs
+    </a>
+  </div>
       border: 1px solid #d9b4b4;
       background: #f7dddd;
       font-size: 12px;
@@ -118,13 +122,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     table td,
     table th {
       vertical-align: middle;
-    }
+    }<div style="text-align: center; margin-bottom: 20px;">
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+      Analyse More APKs
+    </a>
+  </div>
   </style>
 </head>
 
 <body>
 
   <!-- main page box -->
+  {% for result in results %}
   <div class="content-wrap">
 
     <h2 style="margin-top:0;">Analysis Complete</h2>
@@ -256,13 +265,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         No suspicious permissions detected.
       </p>
     {% endif %}
-    <hr>
+    </div>
+    {% endfor %}
 
     <!-- return button -->
+    <div style="text-align: center; margin-bottom: 20px;">
     <a href="/" class="btn btn-outline-secondary btn-sm">
-      Analyse Another APK
+      Analyse More APKs
     </a>
-
   </div>
 
   <div class="bottom-note">
