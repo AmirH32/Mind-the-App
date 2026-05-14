@@ -267,45 +267,71 @@ class APKMalwareDetector:
         plt.show()
 
     def plot_feature_importance(self, top_n: int = 15):
-        """Plot feature importance for models that support it"""
-        importance_dfs = []
+        """Plot cleaner feature importance charts"""
+
+        sns.set_style("whitegrid")
+
+        importance_tbl = []
 
         for name, model in self.trained_models.items():
-            # Get feature importance for each model that supports it
-            if "consensus" not in name and hasattr(model, "get_feature_importance"):
-                importance_df = model.get_feature_importance(self.feature_names)
-                # Change the underscore for space and makes it title case
-                if importance_df is not None:
-                    importance_df["model"] = name.replace("_", " ").title()
+            if hasattr(model, "get_feature_importance"):
+                importance = model.get_feature_importance(self.feature_names)
 
-                    # Append the top n features in a dataframe for each model to the importance features list
-                    importance_dfs.append(importance_df.head(top_n))
-                else:
-                    continue
+                if importance is not None:
+                    importance["model"] = name.replace("_", " ").title()
+                    # Sort by ascending
+                    importance = importance.sort_values("importance", ascending=True)
+                    # Take top features
+                    importance_tbl.append(importance.head(top_n))
 
-        if importance_dfs:
-            # Combine all the importance dataframes into one dataframe to plot them together
-            combined_importance = pd.concat(importance_dfs)
+        if importance_tbl:
+            # Combine all importance table into one table
+            combine_importance = pd.concat(importance_tbl)
+            models = combine_importance["model"].unique()
+            num_models = len(models)
 
-            plt.figure(figsize=(12, 8))
-            # Loop over each model's importance features
-            for i, (model_name, group) in enumerate(
-                combined_importance.groupby("model")
-            ):
-                # Each model gets its own subplot
-                plt.subplot(2, 2, i + 1)
-                # Only plots 10 features
-                sns.barplot(x="importance", y="feature", data=group.head(10))
-                plt.title(f"Top Features - {model_name}")
-                plt.tight_layout()
-
-            plt.suptitle("Feature Importance Across Models", fontsize=16)
-            plt.tight_layout()
-
-            # Save the features
-            plt.savefig(
-                os.path.join(self.output_dir, "feature_importance.png"), dpi=300
+            _, axes = plt.subplots(
+                num_models, 1, figsize=(14, 5 * num_models), constrained_layout=True
             )
+
+            # Handle single model
+            if num_models == 1:
+                axes = [axes]
+
+            palette = sns.color_palette("viridis", top_n)
+
+            # For each model we have horizontal bar chart
+            for ax, model_name in zip(axes, models):
+                group = combine_importance[
+                    combine_importance["model"] == model_name
+                ].copy()
+                # Sort for cleaner horizontal plot
+                group = group.sort_values("importance")
+
+                bars = sns.barplot(
+                    x="importance", y="feature", data=group, palette=palette, ax=ax
+                )
+
+                ax.set_title(
+                    f"Top Features for {model_name}", fontsize=16, fontweight="bold"
+                )
+                ax.set_xlabel("Importance Score", fontsize=12)
+                ax.set_ylabel("Feature", fontsize=12)
+
+                ax.tick_params(axis="both", labelsize=10)
+                # Add numeric labels to bars
+                for container in ax.containers:
+                    ax.bar_label(
+                        container, fmt="%.3f", padding=3, fontsize=9, fontweight="bold"
+                    )
+
+            # Save figure
+            plt.savefig(
+                os.path.join(self.output_dir, "feature_importance.png"),
+                dpi=300,
+                bbox_inches="tight",
+            )
+
             plt.show()
 
     def plot_shap_analysis(self):
