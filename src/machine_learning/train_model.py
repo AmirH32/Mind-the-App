@@ -282,8 +282,16 @@ class APKMalwareDetector:
 
                 if importance is not None:
                     importance["model"] = name.replace("_", " ").title()
-                    # Sort by ascending
-                    importance = importance.sort_values("importance", ascending=True)
+
+                    importance = importance[importance["importance"].round(3) > 0]
+
+                    # Skip empty results
+                    if importance.empty:
+                        continue
+
+                    # Sort by importance
+                    importance = importance.sort_values("importance", ascending=False)
+
                     # Take top features
                     importance_tbl.append(importance.head(top_n))
 
@@ -416,6 +424,13 @@ class APKMalwareDetector:
                             "direction": mean_signed_shap,
                         }
                     )
+
+                    # Remove features with zero SHAP importance
+                    importance = importance[importance["importance"].round(3) > 0]
+
+                    # Skip model if no important features remain
+                    if importance.empty:
+                        continue
 
                     importance = importance.sort_values(
                         "importance", ascending=True
