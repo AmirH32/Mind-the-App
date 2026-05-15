@@ -466,8 +466,7 @@ class APKMalwareDetector:
                 )
 
                 ax.set_xlabel(
-                    "Mean |SHAP value| (average impact on prediction)\n"
-                    "Red = increases dual-use probability  |  Green = decreases dual-use probability",
+                    "Mean |SHAP value| (average impact on prediction)",
                     fontsize=12,
                 )
 
@@ -487,6 +486,14 @@ class APKMalwareDetector:
                         fontsize=12,
                         fontweight="bold",
                     )
+
+            fig.text(
+                0.5,
+                -0.02,
+                "Red = increases dual-use probability  |  Green = decreases dual-use probability",
+                ha="center",
+                fontsize=12,
+            )
 
             plt.savefig(
                 os.path.join(
