@@ -24,6 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import shap
+import math
 from typing import List, Tuple, Type, Dict
 
 from models.base_model import BaseModel
@@ -32,6 +33,7 @@ from models.rfm import RandomForestModel
 from models.lrm import LogisticRegressionModel
 from models.svm import SVMModel
 from models.consensus import ConsensusModel
+from models.dummy import DummyModel
 
 # Model imports
 from sklearn.model_selection import train_test_split
@@ -136,6 +138,7 @@ class APKMalwareDetector:
             "logistic": LogisticRegressionModel,
             "svm": SVMModel,
             "gradient_boosting": GradientBoostingModel,
+            "dummy": DummyModel,
         }
 
         # Use the model type string to index the config dictionary to obtain the configuration for the model
@@ -334,25 +337,25 @@ class APKMalwareDetector:
 
             plt.show()
 
-    def plot_shap_analysis(self):
-        """Create SHAP analysis plots for models that support it"""
+    def plot_shap_analysis(self, top_n: int = 15):
+        """Create SHAP analysis plots"""
+
+        sns.set_style("whitegrid")
+        shap_bar_data = []
 
         for name, model in self.trained_models.items():
-            # Skip consensus models since feature importance doesn't make sense since it aggregates models
+            # Skip consensus models
             if "consensus" in name:
                 continue
 
-            # Check if model has the shap method
             if hasattr(model, "get_shap_values"):
-                print(f"\nSHAP value for {name}")
-
                 shap_results = model.get_shap_values(self.X_test)
 
                 if shap_results:
                     shap_values = shap_results["shap_values"]
                     X_sample = shap_results["X_sample"]
 
-                    # For binary classification, use dual-use classification
+                    # Handle binary classification SHAP output
                     if isinstance(shap_values, list):
                         shap_values_class1 = shap_values[1]
                     elif shap_values.ndim == 3:
@@ -362,60 +365,133 @@ class APKMalwareDetector:
 
                     display_name = name.replace("_", " ").title()
 
+                    # Make beeswarm plot
                     fig, ax = plt.subplots(figsize=(14, 10))
+
                     shap.summary_plot(
                         shap_values_class1,
                         X_sample,
                         feature_names=self.feature_names,
-                        max_display=15,
+                        max_display=top_n,
                         show=False,
-                        plot_size=None,  # let our figsize control dimensions
+                        plot_size=None,
                     )
+
                     ax.set_title(
                         f"SHAP Feature Impact — {display_name}\n"
                         "(colour = feature value; x-axis = impact on dual-use prediction, each sample is a dot)",
                         fontsize=13,
                         pad=12,
                     )
-                    ax.tick_params(axis="y", labelsize=11)  # feature names
-                    ax.tick_params(axis="x", labelsize=10)
-                    ax.set_xlabel("SHAP value (impact on model output)", fontsize=11)
-                    plt.tight_layout()
-                    plt.savefig(
-                        os.path.join(self.output_dir, f"{name}_shap_summary.png"),
-                        dpi=150,  # 300 dpi at 14×10 in is enormous; 150 is fine
-                        bbox_inches="tight",
-                    )
-                    plt.close()
 
-                    fig, ax = plt.subplots(figsize=(12, 7))
-                    shap.summary_plot(
-                        shap_values_class1,
-                        X_sample,
-                        feature_names=self.feature_names,
-                        max_display=15,
-                        plot_type="bar",
-                        show=False,
-                        plot_size=None,
-                    )
-                    ax.set_title(
-                        f"SHAP Global Feature Importance — {display_name}",
-                        fontsize=13,
-                        pad=12,
-                    )
                     ax.tick_params(axis="y", labelsize=11)
                     ax.tick_params(axis="x", labelsize=10)
+
                     ax.set_xlabel(
-                        "Mean |SHAP value| (average impact on dual-use prediction)",
+                        "SHAP value (impact on model output)",
                         fontsize=11,
                     )
+
                     plt.tight_layout()
+
                     plt.savefig(
-                        os.path.join(self.output_dir, f"{name}_shap_bar.png"),
+                        os.path.join(
+                            self.output_dir,
+                            f"{name}_shap_summary.png",
+                        ),
                         dpi=150,
                         bbox_inches="tight",
                     )
+
                     plt.close()
+
+                    # Get the mean SHAP value for the dual-use class
+                    mean_abs_shap = np.abs(shap_values_class1).mean(axis=0)
+
+                    importance = pd.DataFrame(
+                        {
+                            "feature": self.feature_names,
+                            "importance": mean_abs_shap,
+                        }
+                    )
+
+                    importance = importance.sort_values(
+                        "importance", ascending=True
+                    ).tail(top_n)
+
+                    importance["model"] = display_name
+                    shap_bar_data.append(importance)
+
+        if shap_bar_data:
+            combined_shap = pd.concat(shap_bar_data)
+
+            models = combined_shap["model"].unique()
+            num_models = len(models)
+
+            ncols = 2
+            nrows = math.ceil(num_models / ncols)
+
+            fig, axes = plt.subplots(
+                nrows,
+                ncols,
+                figsize=(14, 5 * num_models),
+                constrained_layout=True,
+            )
+
+            axes = np.array(axes).flatten()
+
+            palette = sns.color_palette("viridis", top_n)
+
+            for ax, model_name in zip(axes, models):
+                group = combined_shap[combined_shap["model"] == model_name].copy()
+                group = group.sort_values("importance")
+
+                sns.barplot(
+                    x="importance",
+                    y="feature",
+                    data=group,
+                    palette=palette,
+                    ax=ax,
+                )
+
+                ax.set_title(
+                    f"SHAP Global Feature Importance — {model_name}",
+                    fontsize=16,
+                    fontweight="bold",
+                )
+
+                ax.set_xlabel(
+                    "Mean |SHAP value| (average impact on prediction)",
+                    fontsize=12,
+                )
+
+                ax.set_ylabel(
+                    "Feature",
+                    fontsize=12,
+                )
+
+                ax.tick_params(axis="both", labelsize=10)
+
+                # Add labels to bars
+                for container in ax.containers:
+                    ax.bar_label(
+                        container,
+                        fmt="%.3f",
+                        padding=3,
+                        fontsize=12,
+                        fontweight="bold",
+                    )
+
+            plt.savefig(
+                os.path.join(
+                    self.output_dir,
+                    "combined_shap_bar.png",
+                ),
+                dpi=300,
+                bbox_inches="tight",
+            )
+
+            plt.show()
 
     def save_models(self):
         """Save all trained models"""
@@ -525,7 +601,7 @@ def main():
         # Expect one or more arguments
         nargs="+",
         default=["random_forest"],
-        choices=["random_forest", "logistic", "svm", "gradient_boosting"],
+        choices=["random_forest", "logistic", "svm", "gradient_boosting", "dummy"],
         help='Models to train (use "all" for all models)',
     )
 
@@ -556,7 +632,7 @@ def main():
 
     # Handle model aliases
     if "all" in args.models:
-        model_types = ["random_forest", "logistic", "svm", "gradient_boosting"]
+        model_types = ["random_forest", "logistic", "svm", "gradient_boosting", "dummy"]
     else:
         model_types = args.models
 
@@ -564,7 +640,7 @@ def main():
     detector = APKMalwareDetector(csv_path=CSV_FILE, output_dir=OUTPUT_DIR)  # pyright: ignore
 
     if args.all_models:
-        model_types = ["random_forest", "logistic", "svm", "gradient_boosting"]
+        model_types = ["random_forest", "logistic", "svm", "gradient_boosting", "dummy"]
 
     detector.run(
         model_types=model_types,

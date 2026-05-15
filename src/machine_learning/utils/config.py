@@ -45,4 +45,10 @@ MODEL_CONFIGS = {
             "classifier__subsample": [0.8, 0.9, 1.0],
         },
     ),
+    "dummy": ModelConfig(
+        name="Dummy Baseline",
+        param_space={},  # No tuning needed for baseline
+        cv_folds=3,  # Keep consistent with others
+        metric="f1",  # Keep consistent with others
+    ),
 }
