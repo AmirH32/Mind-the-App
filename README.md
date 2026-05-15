@@ -124,28 +124,22 @@ The project covers the complete workflow from:
 └── README.md
 └── LICENSE
 └── requirements.txt
-``````---
+```
+
+---
 
 # Modules Overview
 
 ## 1. APK Discovery Tool (`main.py`)
 
-Responsible for the **Snowballing Discovery Technique** used to identify potential dual-use applications.
+Contains the **Snowballing Discovery Technique** and **scraper** used to identify potential dual-use applications.
 
 The module:
 
-- Expands seed queries (e.g., `"track my wife"`)
+- Expands seed queries
 - Uses Google Custom Search for APK discovery
 - Scrapes APKMirror for downloadable APKs
-- Handles automated downloading in batches
-
-### Key Features
-
-- Query expansion
-- Automated scraping
-- Selenium + Cloudscraper integration
-- Fault-tolerant batching
-- Automated APK collection pipeline
+- Handles automated downloading and cleanup
 
 ---
 
@@ -159,15 +153,12 @@ Extracted features include:
 - Intent filters
 - Suspicious libraries
 - Network indicators (IPs/domains)
+- Targeted SDK version
+- Exported Provider
+- Services
+- Persistence and evasion techniques
 
-The extracted data is exported into structured CSV datasets for machine learning.
-
-### Key Features
-
-- Multi-processing support
-- Suspicious permission mapping
-- Static feature extraction
-- CSV dataset generation
+The extracted data is outputted and exported into structured CSV datasets for machine learning.
 
 ---
 
@@ -181,17 +172,11 @@ Trains and evaluates multiple machine learning models for dual-use app detection
 - Support Vector Machine (SVM)
 - Logistic Regression
 - Gradient Boosting
-- Consensus Voting Ensembles
+- Consensus Voting Ensembles ("hard" and "soft")
 
-The module also provides explainability using SHAP analysis and feature importance visualizations.
+The module also provides explain ability using SHAP analysis and feature importance visualisations. It also provides plots for model comparison of the key metrics used (accuracy, precision, recall, F1-score, ROC-AUC) and saves the trained models for later use.
 
-### Key Features
-
-- Automated model training
-- Consensus voting models
-- SHAP explainability
-- Evaluation plot generation
-- Model serialization using `joblib`
+The saved models can be loaded and then used and evaluated.
 
 ---
 
@@ -199,19 +184,12 @@ The module also provides explainability using SHAP analysis and feature importan
 
 A Flask-based web interface for real-time APK analysis and risk assessment.
 
-Users can upload APK files and receive:
+Users can upload APK files, select one of the various trained and saved models and receive:
 
 - Risk predictions
 - Dual-use classification
 - Flagged suspicious features
 - Model-based confidence outputs
-
-### Key Features
-
-- Drag-and-drop APK upload
-- Multiple model selection
-- Visual risk indicators
-- Real-time prediction pipeline
 
 ---
 
@@ -231,11 +209,21 @@ Expand search queries and begin APK scraping/downloading:
 python -m src.apk_discovery_tool.main -g -s -a -b
 ```
 
+### Flags Overview
+
+- `-g` → Generate and expand seed queries into a larger search set  
+- `-s` → Search for APK-related results using Google Custom Search  
+- `-a` → Scrape APKMirror for APK metadata and download links  
+- `-b` → Run in batched mode with checkpointing and fault tolerance (progress saving)
+```
+```
+```
+
 ---
 
 ## 2. Static Analysis & Feature Extraction
 
-Analyze APK files and generate the ML dataset:
+Analyse APK files and generate the ML dataset:
 
 ```bash
 python -m src.apk_analysis.APK_analyser \
@@ -243,6 +231,13 @@ data/raw/apks \
 data/processed/apk_data.csv \
 data/features/suspicious_permissions.json
 ```
+
+### Flags Overview
+
+- `apk_dir` — directory containing APK files to analyse  
+- `output_csv` — path to export extracted feature dataset  
+- `json_path` — suspicious permissions configuration file  
+- `-o`, `--overwrite` — overwrite existing CSV instead of appending  
 
 ---
 
@@ -254,11 +249,43 @@ Train all machine learning models and generate evaluation outputs:
 python -m src.machine_learning.train_model --all_models --consensus
 ```
 
+### Core Execution Flags
+
+- `--all_models` (`-a`)  
+  Trains **all available models** in the system, overriding any selection made with `--models`.  
+  This includes:
+  - Random Forest
+  - Logistic Regression
+  - SVM
+  - Gradient Boosting
+  - Dummy model
+
+- `--consensus` (`-c`)  
+  Enables **ensemble (voting) models** after base model training.  
+  Builds:
+  - Hard voting consensus model
+  - Soft voting consensus model  
+  Requires multiple base models to be meaningful.
+
+- `--load` (`-l`)  
+  Skips training and **loads previously saved models** from `OUTPUT_DIR`.  
+
+---
+
+### Model Selection Flags
+
+- `--models` (`-m`)  
+  Specifies which models to train manually. Accepts one or more values:
+
+  ```bash
+  --models random_forest logistic svm gradient_boosting dummy
+  ```
+
 ---
 
 ## 4. Running the Web Application
 
-Launch the Flask web server for real-time APK classification:
+Launch the Flask web server for APK classification dashboard:
 
 ```bash
 PYTHONPATH=$(pwd)/src python src/web_app/app.py
@@ -271,12 +298,6 @@ PYTHONPATH=$(pwd)/src python src/web_app/app.py
 ## Environment Configuration
 
 Ensure all required `.env` files are configured within the relevant `utils/` directories.
-
-Examples include:
-
-- Google Custom Search API keys
-- Scraping credentials
-- Runtime configuration variables
 
 ---
 
@@ -295,7 +316,6 @@ Generated evaluation artifacts include:
 - SHAP global importance plots
 - Feature importance visualizations
 - Model comparison sheets
-- Ensemble performance metrics
 
 Outputs are stored in:
 
