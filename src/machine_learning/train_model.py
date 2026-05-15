@@ -384,8 +384,8 @@ class APKMalwareDetector:
                         pad=12,
                     )
 
-                    ax.tick_params(axis="y", labelsize=11)
-                    ax.tick_params(axis="x", labelsize=10)
+                    ax.tick_params(axis="y", labelsize=16)
+                    ax.tick_params(axis="x", labelsize=11)
 
                     ax.set_xlabel(
                         "SHAP value (impact on model output)",
@@ -407,11 +407,13 @@ class APKMalwareDetector:
 
                     # Get the mean SHAP value for the dual-use class
                     mean_abs_shap = np.abs(shap_values_class1).mean(axis=0)
+                    mean_signed_shap = shap_values_class1.mean(axis=0)
 
                     importance = pd.DataFrame(
                         {
                             "feature": self.feature_names,
                             "importance": mean_abs_shap,
+                            "direction": mean_signed_shap,
                         }
                     )
 
@@ -440,17 +442,20 @@ class APKMalwareDetector:
 
             axes = np.array(axes).flatten()
 
-            palette = sns.color_palette("viridis", top_n)
-
             for ax, model_name in zip(axes, models):
                 group = combined_shap[combined_shap["model"] == model_name].copy()
                 group = group.sort_values("importance")
+
+                # Green = pushes toward benign (negative SHAP), Red = pushes toward dual-use (positive SHAP)
+                bar_colors = [
+                    "#d62728" if d >= 0 else "#2ca02c" for d in group["direction"]
+                ]
 
                 sns.barplot(
                     x="importance",
                     y="feature",
                     data=group,
-                    palette=palette,
+                    palette=bar_colors,
                     ax=ax,
                 )
 
@@ -461,7 +466,8 @@ class APKMalwareDetector:
                 )
 
                 ax.set_xlabel(
-                    "Mean |SHAP value| (average impact on prediction)",
+                    "Mean |SHAP value| (average impact on prediction)\n"
+                    "Red = increases dual-use probability  |  Green = decreases dual-use probability",
                     fontsize=12,
                 )
 
