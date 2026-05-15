@@ -1,72 +1,126 @@
 # Mind the App: Detecting Dual-Use Applications
 
-An end-to-end pipeline designed to detect **Dual-Use Applications** — Android apps that may appear legitimate (e.g., parental control or device recovery tools) but are frequently repurposed for malicious surveillance, stalking, or unauthorized monitoring.
+An end-to-end pipeline designed to detect **Dual-Use Applications**. These are Android apps that may appear genuine (e.g. parental control or recovery tools) but are frequently repurposed for malicious surveillance or spying.
 
 The project covers the complete workflow from:
-
 - APK discovery and scraping
 - Static APK analysis
 - Feature engineering
 - Machine learning-based classification
-- Real-time risk assessment via a web interface
+- Evaluation
+- Web interface dashboard
 
 ---
 
 # Project Structure
-
 ```text
-data
-├── features
-│   └── suspicious_permissions.json
-├── processed
-│   ├── apk_data.csv
-│   └── archive
-├── raw
-│   └── scraping
-│       ├── direct_downloads.json
-│       ├── expanded_queries.json
-│       ├── search_results.json
-│       └── temp_downloads.json
-└── runtime
-    └── progress.json
-
-evaluation
-├── plots
-│   ├── combined_shap_bar.png
-│   ├── feature_importance.png
-│   └── ... (SHAP and comparison plots)
-└── sheets
-    └── model_comparison.csv
-
-models
-├── consensus_hard_model.pkl
-├── consensus_soft_model.pkl
-├── gradient_boosting_model.pkl
-├── logistic_model.pkl
-├── random_forest_model.pkl
-└── svm_model.pkl
-
-src
-├── apk_analysis
-│   ├── APK_analyser.py
-│   └── utils
-├── apk_discovery_tool
-│   ├── apk_finder
-│   ├── downloaders
-│   ├── main.py
-│   ├── scrapers
-│   └── utils
-├── machine_learning
-│   ├── models
-│   ├── train_model.py
-│   └── utils
-└── web_app
-    ├── app.py
-    ├── templates
-    └── utils
-```
-
----
+/ Project Root — 5155 Lines
+├── data
+│   ├── features
+│   │   └── suspicious_permissions.json — Suspicious permission mapping dataset
+│   ├── processed — Analysed APK dataset
+│   │   ├── apk_data.csv — Main processed dataset
+│   │   └── archive — Legacy dataset versions
+│   │       ├── apk_data_old.csv — Older dataset version
+│   │       └── apk_data_old1.csv — Backup dataset version
+│   ├── raw — Temporary extracted data
+│   │   └── scraping — Temporary scraping outputs
+│   │       ├── direct_downloads.json — APK download metadata
+│   │       ├── expanded_queries.json — Expanded search queries
+│   │       ├── search_results.json — Scraped APK results
+│   │       └── temp_downloads.json — Current batch download metadata
+│   └── runtime
+│       └── progress.json — Pipeline progress tracking file
+│
+├── evaluation — Classifier evaluation outputs
+│   ├── plots — Evaluation plots (SHAP, feature importance, comparisons)
+│   │   ├── combined_shap_bar.png — Global SHAP feature importance
+│   │   ├── feature_importance.png — Feature ranking plot
+│   │   ├── gradient_boosting_shap_bar.png — GB SHAP bar plot
+│   │   ├── gradient_boosting_shap_summary.png — GB SHAP summary plot
+│   │   ├── logistic_shap_bar.png — Logistic SHAP bar plot
+│   │   ├── logistic_shap_summary.png — Logistic SHAP summary plot
+│   │   ├── model_comparison.png — Model comparison chart
+│   │   ├── random_forest_shap_bar.png — RF SHAP bar plot
+│   │   ├── random_forest_shap_summary.png — RF SHAP summary plot
+│   │   ├── svm_shap_bar.png — SVM SHAP bar plot
+│   │   └── svm_shap_summary.png — SVM SHAP summary plot
+│   └── sheets
+│       └── model_comparison.csv — Model evaluation metrics table
+│
+├── models — Trained ML models
+│   ├── consensus_hard_model.pkl — Hard voting ensemble model
+│   ├── consensus_soft_model.pkl — Soft voting ensemble model
+│   ├── gradient_boosting_model.pkl — Gradient Boosting classifier
+│   ├── logistic_model.pkl — Logistic Regression classifier
+│   ├── random_forest_model.pkl — Random Forest classifier
+│   └── svm_model.pkl — Support Vector Machine classifier
+│
+├── src — Source code
+│   ├── apk_analysis — Static APK analysis module
+│   │   ├── APK_analyser.py — Androguard-based static analysis engine
+│   │   └── utils
+│   │       ├── config.py — Loads environment variables and settings
+│   │       ├── .env
+│   │       ├── .env.example
+│   │       └── __init__.py
+│   │
+│   ├── apk_discovery_tool — APK scraping and discovery pipeline
+│   │   ├── main.py — Pipeline entry point
+│   │   ├── apk_finder — APK search subsystem
+│   │   │   ├── base_apk_searcher.py — Base search interface
+│   │   │   ├── google_cse_client.py — Google CSE API client
+│   │   │   └── __init__.py
+│   │   ├── downloaders — APK download system
+│   │   │   ├── base_downloader.py — Base downloader class
+│   │   │   ├── cleaner.py — Download cleanup logic
+│   │   │   ├── downloader.py — HTTP downloader
+│   │   │   ├── selenium_downloader.py — Browser-based downloader
+│   │   │   └── __init__.py
+│   │   ├── query_provider — Related query generation
+│   │   │   ├── base_query_provider.py — Base query provider
+│   │   │   ├── google_provider.py — Google suggestion API provider
+│   │   │   └── __init__.py
+│   │   ├── query_snowballer — Query expansion engine
+│   │   │   └── snowballer.py — BFS-style query expansion
+│   │   ├── scrapers — APK scraping modules
+│   │   │   ├── base_scraper.py — Base scraper class
+│   │   │   ├── apkmirror_scraper.py — APKMirror scraper
+│   │   │   └── __init__.py
+│   │   └── utils
+│   │       ├── config.py — Loads scraping configuration
+│   │       ├── .env
+│   │       ├── .env.example
+│   │       └── __init__.py
+│   │
+│   ├── machine_learning — ML training pipeline
+│   │   ├── train_model.py — Full training pipeline
+│   │   ├── models — ML model implementations
+│   │   │   ├── base_model.py — Abstract model class
+│   │   │   ├── consensus.py — Ensemble voting model
+│   │   │   ├── dummy.py — Baseline model
+│   │   │   ├── grm.py — Gradient Boosting model
+│   │   │   ├── lrm.py — Logistic Regression model
+│   │   │   ├── rfm.py — Random Forest model
+│   │   │   └── svm.py — SVM model
+│   │   └── utils
+│   │       ├── config.py — ML configuration loader
+│   │       ├── .env
+│   │       └── .env.example
+│   │
+│   └── web_app — Flask web application
+│       ├── app.py — Flask server
+│       ├── templates
+│       │   ├── about.html — About page
+│       │   ├── index.html — Upload page
+│       │   └── result.html — Results page
+│       └── utils
+│           ├── config.py — Web config loader
+│           ├── .env
+│           └── .env.example
+│
+└── README.md / LICENSE / requirements.txt
+```---
 
 # Modules Overview
 
