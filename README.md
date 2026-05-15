@@ -14,113 +14,117 @@ The project covers the complete workflow from:
 
 # Project Structure
 ```text
-/ Project Root — 5155 Lines
+```text
+/ Project Root
 ├── data
 │   ├── features
-│   │   └── suspicious_permissions.json — Suspicious permission mapping dataset
-│   ├── processed — Analysed APK dataset
-│   │   ├── apk_data.csv — Main processed dataset
-│   │   └── archive — Legacy dataset versions
-│   │       ├── apk_data_old.csv — Older dataset version
-│   │       └── apk_data_old1.csv — Backup dataset version
-│   ├── raw — Temporary extracted data
-│   │   └── scraping — Temporary scraping outputs
-│   │       ├── direct_downloads.json — APK download metadata
-│   │       ├── expanded_queries.json — Expanded search queries
-│   │       ├── search_results.json — Scraped APK results
-│   │       └── temp_downloads.json — Current batch download metadata
+│   │   └── suspicious_permissions.json
+│   ├── processed
+│   │   ├── apk_data.csv
+│   │   └── archive
+│   │       ├── apk_data_old.csv
+│   │       └── apk_data_old1.csv
+│   ├── raw
+│   │   └── scraping
+│   │       ├── direct_downloads.json
+│   │       ├── expanded_queries.json
+│   │       ├── search_results.json
+│   │       └── temp_downloads.json
 │   └── runtime
-│       └── progress.json — Pipeline progress tracking file
+│       └── progress.json
 │
-├── evaluation — Classifier evaluation outputs
-│   ├── plots — Evaluation plots (SHAP, feature importance, comparisons)
-│   │   ├── combined_shap_bar.png — Global SHAP feature importance
-│   │   ├── feature_importance.png — Feature ranking plot
-│   │   ├── gradient_boosting_shap_bar.png — GB SHAP bar plot
-│   │   ├── gradient_boosting_shap_summary.png — GB SHAP summary plot
-│   │   ├── logistic_shap_bar.png — Logistic SHAP bar plot
-│   │   ├── logistic_shap_summary.png — Logistic SHAP summary plot
-│   │   ├── model_comparison.png — Model comparison chart
-│   │   ├── random_forest_shap_bar.png — RF SHAP bar plot
-│   │   ├── random_forest_shap_summary.png — RF SHAP summary plot
-│   │   ├── svm_shap_bar.png — SVM SHAP bar plot
-│   │   └── svm_shap_summary.png — SVM SHAP summary plot
+├── evaluation
+│   ├── plots
+│   │   ├── combined_shap_bar.png
+│   │   ├── feature_importance.png
+│   │   ├── gradient_boosting_shap_bar.png
+│   │   ├── gradient_boosting_shap_summary.png
+│   │   ├── logistic_shap_bar.png
+│   │   ├── logistic_shap_summary.png
+│   │   ├── model_comparison.png
+│   │   ├── random_forest_shap_bar.png
+│   │   ├── random_forest_shap_summary.png
+│   │   ├── svm_shap_bar.png
+│   │   └── svm_shap_summary.png
 │   └── sheets
-│       └── model_comparison.csv — Model evaluation metrics table
+│       └── model_comparison.csv
 │
-├── models — Trained ML models
-│   ├── consensus_hard_model.pkl — Hard voting ensemble model
-│   ├── consensus_soft_model.pkl — Soft voting ensemble model
-│   ├── gradient_boosting_model.pkl — Gradient Boosting classifier
-│   ├── logistic_model.pkl — Logistic Regression classifier
-│   ├── random_forest_model.pkl — Random Forest classifier
-│   └── svm_model.pkl — Support Vector Machine classifier
+├── models
+│   ├── consensus_hard_model.pkl
+│   ├── consensus_soft_model.pkl
+│   ├── gradient_boosting_model.pkl
+│   ├── logistic_model.pkl
+│   ├── random_forest_model.pkl
+│   └── svm_model.pkl
 │
-├── src — Source code
-│   ├── apk_analysis — Static APK analysis module
-│   │   ├── APK_analyser.py — Androguard-based static analysis engine
+├── src
+│   ├── apk_analysis
+│   │   ├── APK_analyser.py
 │   │   └── utils
-│   │       ├── config.py — Loads environment variables and settings
+│   │       ├── config.py
 │   │       ├── .env
 │   │       ├── .env.example
 │   │       └── __init__.py
 │   │
-│   ├── apk_discovery_tool — APK scraping and discovery pipeline
-│   │   ├── main.py — Pipeline entry point
-│   │   ├── apk_finder — APK search subsystem
-│   │   │   ├── base_apk_searcher.py — Base search interface
-│   │   │   ├── google_cse_client.py — Google CSE API client
+│   ├── apk_discovery_tool
+│   │   ├── main.py
+│   │   ├── apk_finder
+│   │   │   ├── base_apk_searcher.py
+│   │   │   ├── google_cse_client.py
 │   │   │   └── __init__.py
-│   │   ├── downloaders — APK download system
-│   │   │   ├── base_downloader.py — Base downloader class
-│   │   │   ├── cleaner.py — Download cleanup logic
-│   │   │   ├── downloader.py — HTTP downloader
-│   │   │   ├── selenium_downloader.py — Browser-based downloader
+│   │   ├── downloaders
+│   │   │   ├── base_downloader.py
+│   │   │   ├── cleaner.py
+│   │   │   ├── downloader.py
+│   │   │   ├── selenium_downloader.py
 │   │   │   └── __init__.py
-│   │   ├── query_provider — Related query generation
-│   │   │   ├── base_query_provider.py — Base query provider
-│   │   │   ├── google_provider.py — Google suggestion API provider
+│   │   ├── query_provider
+│   │   │   ├── base_query_provider.py
+│   │   │   ├── google_provider.py
 │   │   │   └── __init__.py
-│   │   ├── query_snowballer — Query expansion engine
-│   │   │   └── snowballer.py — BFS-style query expansion
-│   │   ├── scrapers — APK scraping modules
-│   │   │   ├── base_scraper.py — Base scraper class
-│   │   │   ├── apkmirror_scraper.py — APKMirror scraper
+│   │   ├── query_snowballer
+│   │   │   └── snowballer.py
+│   │   ├── scrapers
+│   │   │   ├── base_scraper.py
+│   │   │   ├── apkmirror_scraper.py
 │   │   │   └── __init__.py
 │   │   └── utils
-│   │       ├── config.py — Loads scraping configuration
+│   │       ├── config.py
 │   │       ├── .env
 │   │       ├── .env.example
 │   │       └── __init__.py
 │   │
-│   ├── machine_learning — ML training pipeline
-│   │   ├── train_model.py — Full training pipeline
-│   │   ├── models — ML model implementations
-│   │   │   ├── base_model.py — Abstract model class
-│   │   │   ├── consensus.py — Ensemble voting model
-│   │   │   ├── dummy.py — Baseline model
-│   │   │   ├── grm.py — Gradient Boosting model
-│   │   │   ├── lrm.py — Logistic Regression model
-│   │   │   ├── rfm.py — Random Forest model
-│   │   │   └── svm.py — SVM model
+│   ├── machine_learning
+│   │   ├── train_model.py
+│   │   ├── models
+│   │   │   ├── base_model.py
+│   │   │   ├── consensus.py
+│   │   │   ├── dummy.py
+│   │   │   ├── grm.py
+│   │   │   ├── lrm.py
+│   │   │   ├── rfm.py
+│   │   │   └── svm.py
 │   │   └── utils
-│   │       ├── config.py — ML configuration loader
+│   │       ├── config.py
 │   │       ├── .env
 │   │       └── .env.example
 │   │
-│   └── web_app — Flask web application
-│       ├── app.py — Flask server
+│   └── web_app
+│       ├── app.py
 │       ├── templates
-│       │   ├── about.html — About page
-│       │   ├── index.html — Upload page
-│       │   └── result.html — Results page
+│       │   ├── about.html
+│       │   ├── index.html
+│       │   └── result.html
 │       └── utils
-│           ├── config.py — Web config loader
+│           ├── config.py
 │           ├── .env
-│           └── .env.example
+│           ├── .env.example
+│           └── __init__.py
 │
-└── README.md / LICENSE / requirements.txt
-```---
+└── README.md
+└── LICENSE
+└── requirements.txt
+``````---
 
 # Modules Overview
 
