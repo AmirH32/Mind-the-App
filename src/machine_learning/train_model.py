@@ -209,10 +209,13 @@ class APKMalwareDetector:
         print(f"{'=' * 60}")
 
         results = []
+        confusion_matrices = {}
         # Iterate through the trained models list
         for name, model in self.trained_models.items():
             # Evaluate the models
             metrics = model.evaluate(self.X_test, self.y_test)
+
+            confusion_matrices[name] = metrics.pop("confusion_matrix", None)
 
             # Append the results for each model into the results
             results.append(
@@ -235,7 +238,7 @@ class APKMalwareDetector:
             os.path.join(self.output_dir, "model_comparison.csv"), index=False
         )
 
-        return results_df
+        return results_df, confusion_matrices
 
     def plot_comparison(self, results_df: pd.DataFrame):
         """Create plots to compare models"""
@@ -521,6 +524,45 @@ class APKMalwareDetector:
 
             plt.show()
 
+    def plot_confusion_matrix(self, confusion_matrices):
+        """Plot and save confusion matrix"""
+        n = len(confusion_matrices)
+        ncols = 3
+        nrows = math.ceil(n / ncols)
+
+        fig, axes = plt.subplots(nrows, ncols, figsize=(15, 4.5 * nrows))
+        axes = np.array(axes).flatten()
+
+        for ax, (name, cm) in zip(axes, confusion_matrices.items()):
+            sns.heatmap(
+                cm,
+                annot=True,
+                fmt="d",
+                cmap="Blues",
+                xticklabels=["Benign", "Dual-Use"],
+                yticklabels=["Benign", "Dual-Use"],
+                ax=ax,
+            )
+            ax.set_title(name.replace("_", " ").title(), fontsize=13, fontweight="bold")
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("Actual")
+
+            tn, fp, fn, tp = cm.ravel()
+            ax.set_xlabel(f"Predicted\nTP={tp}  TN={tn}  FP={fp}  FN={fn}", fontsize=10)
+
+        # Hide unused plots
+        for ax in axes[n:]:
+            ax.set_visible(False)
+
+        plt.suptitle("Confusion Matrices", fontsize=16, fontweight="bold")
+        plt.tight_layout()
+        plt.savefig(
+            os.path.join(self.output_dir, "confusion_matrices.png"),
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.show()
+
     def save_models(self):
         """Save all trained models"""
         for name, model in self.trained_models.items():
@@ -595,12 +637,12 @@ class APKMalwareDetector:
 
         if self.trained_models:
             # Evaluate
-            results_df = self.evaluate_all_models()
+            results_df, confusion_matrices = self.evaluate_all_models()
 
             # Plot the results
             self.plot_comparison(results_df)
+            self.plot_confusion_matrix(confusion_matrices)
             self.plot_feature_importance()
-
             self.plot_shap_analysis()
 
             print("TRAINING COMPLETE, PLOTS and MODELS SAVED")

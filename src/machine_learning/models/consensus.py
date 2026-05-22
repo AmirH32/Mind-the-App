@@ -24,6 +24,7 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
     roc_auc_score,
+    confusion_matrix,
 )
 
 from sklearn.model_selection import cross_val_score
@@ -130,8 +131,8 @@ class ConsensusModel:
                 # for both possible classes (benign and dual use) we check if the prediction is equal to the class across all samples for that particular model and we iterate to cover all models. We check if it is equal and then multiply by the weight of that model using vector operations.
                 for i in range(2):  # For binary classification
                     weighted_votes[:, i] += ((pred == i).astype(int)) * weight
-            # Finds the index of the largest value in the each row and returns that
             # Returns the weighted vote count for each class. This is not probability but gives indication of confidence.
+
             return weighted_votes
         else:
             # predict_probs returns a numpy array which is 2D and looks like [[0.8, 0.2], [0.3, 0.7]]. Each row is a sample and each column is the probability of being in that class
@@ -158,4 +159,5 @@ class ConsensusModel:
             "recall": recall_score(y_test, y_pred, average="weighted"),
             "f1": f1_score(y_test, y_pred, average="weighted"),
             "roc_auc": roc_auc_score(y_test, y_proba),
+            "confusion_matrix": confusion_matrix(y_test, y_pred),
         }

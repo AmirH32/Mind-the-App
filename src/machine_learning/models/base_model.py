@@ -32,6 +32,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     roc_auc_score,
+    confusion_matrix,
 )
 
 
@@ -123,6 +124,7 @@ class BaseModel(ABC):
             "precision": precision_score(y_test, y_pred, average="weighted"),
             "recall": recall_score(y_test, y_pred, average="weighted"),
             "f1": f1_score(y_test, y_pred, average="weighted"),
+            "confusion_matrix": confusion_matrix(y_test, y_pred),
         }
 
         # Calculates roc_auc which is how well the model can distinguish between the classes
